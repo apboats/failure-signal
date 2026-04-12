@@ -21,7 +21,7 @@ For each article, provide a JSON response with:
 - relevance_score: 0.0 to 1.0 indicating relevance to institutional failure risk
 - summary: one paragraph summary focusing on risk implications
 - signals: array of detected risk signals, each with:
-  - category: one of "stock_drop", "cds_spike", "liquidity_warning", "client_withdrawal", "counterparty_action", "regulatory_signal", "credit_downgrade", "executive_departure", "news_sentiment"
+  - category: one of "stock_drop", "cds_spike", "liquidity_warning", "client_withdrawal", "counterparty_action", "regulatory_signal", "credit_downgrade", "executive_departure", "news_sentiment", "insider_selling", "lawmaker_selling"
   - severity: "low", "medium", "high", or "critical"
   - title: short description of the signal
   - description: detailed context

@@ -11,6 +11,7 @@ export type SignalCategory =
   | 'insider_selling'
   | 'peer_contagion'
   | 'social_panic'
+  | 'lawmaker_selling'
 
 export type SignalSeverity = 'low' | 'medium' | 'high' | 'critical'
 

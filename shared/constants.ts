@@ -13,6 +13,7 @@ export const SIGNAL_CATEGORIES: Record<SignalCategory, { label: string; color: s
   insider_selling: { label: 'Insider Selling', color: '#f59e0b', icon: 'DollarSign' },
   peer_contagion: { label: 'Peer Contagion', color: '#06b6d4', icon: 'GitBranch' },
   social_panic: { label: 'Social Panic', color: '#e879f9', icon: 'MessageCircle' },
+  lawmaker_selling: { label: 'Lawmaker Selling', color: '#dc2626', icon: 'Landmark' },
 }
 
 export const DEFAULT_SCORING_WEIGHTS: Record<SignalCategory, number> = {
@@ -28,6 +29,7 @@ export const DEFAULT_SCORING_WEIGHTS: Record<SignalCategory, number> = {
   insider_selling: 0.07,
   peer_contagion: 0.06,
   social_panic: 0.04,
+  lawmaker_selling: 0.06,
 }
 
 export const SEVERITY_WEIGHTS: Record<string, number> = {
