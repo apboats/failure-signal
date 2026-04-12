@@ -8,6 +8,9 @@ export type SignalCategory =
   | 'credit_downgrade'
   | 'executive_departure'
   | 'news_sentiment'
+  | 'insider_selling'
+  | 'peer_contagion'
+  | 'social_panic'
 
 export type SignalSeverity = 'low' | 'medium' | 'high' | 'critical'
 

@@ -10,18 +10,24 @@ export const SIGNAL_CATEGORIES: Record<SignalCategory, { label: string; color: s
   credit_downgrade: { label: 'Credit Downgrade', color: '#f43f5e', icon: 'ArrowDownCircle' },
   executive_departure: { label: 'Executive Departure', color: '#8b5cf6', icon: 'UserX' },
   news_sentiment: { label: 'News Sentiment', color: '#6b7280', icon: 'Newspaper' },
+  insider_selling: { label: 'Insider Selling', color: '#f59e0b', icon: 'DollarSign' },
+  peer_contagion: { label: 'Peer Contagion', color: '#06b6d4', icon: 'GitBranch' },
+  social_panic: { label: 'Social Panic', color: '#e879f9', icon: 'MessageCircle' },
 }
 
 export const DEFAULT_SCORING_WEIGHTS: Record<SignalCategory, number> = {
-  cds_spike: 0.20,
-  liquidity_warning: 0.20,
-  stock_drop: 0.15,
-  client_withdrawal: 0.15,
-  counterparty_action: 0.10,
-  credit_downgrade: 0.08,
-  regulatory_signal: 0.07,
-  executive_departure: 0.00,
-  news_sentiment: 0.05,
+  cds_spike: 0.16,
+  liquidity_warning: 0.16,
+  stock_drop: 0.13,
+  client_withdrawal: 0.13,
+  counterparty_action: 0.08,
+  credit_downgrade: 0.06,
+  regulatory_signal: 0.05,
+  executive_departure: 0.02,
+  news_sentiment: 0.04,
+  insider_selling: 0.07,
+  peer_contagion: 0.06,
+  social_panic: 0.04,
 }
 
 export const SEVERITY_WEIGHTS: Record<string, number> = {
