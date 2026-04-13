@@ -13,55 +13,88 @@ const PANIC_KEYWORDS = [
   "withdraw", "withdrawal", "failing", "failed", "contagion",
 ]
 
-const SUBREDDITS = ["wallstreetbets", "investing", "stocks", "banking", "finance"]
+// Only scan top 2 most relevant subreddits (cuts requests by 60%)
+const SUBREDDITS = ["wallstreetbets", "stocks"]
+
+// Max institutions to scan per run — prioritize highest risk
+const MAX_INSTITUTIONS = 20
 
 Deno.serve(async () => {
   try {
+    // Get the 20 highest-risk institutions (by latest score), plus any with score > 0
+    const { data: scores } = await supabase
+      .from("risk_scores")
+      .select("institution_id, score")
+      .order("computed_at", { ascending: false })
+
+    // Dedupe to latest score per institution
+    const latestScores = new Map<string, number>()
+    for (const s of scores ?? []) {
+      if (!latestScores.has(s.institution_id)) {
+        latestScores.set(s.institution_id, Number(s.score))
+      }
+    }
+
+    // Sort by score descending, take top N
+    const topInstitutionIds = [...latestScores.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, MAX_INSTITUTIONS)
+      .map(([id]) => id)
+
+    if (topInstitutionIds.length === 0) {
+      // Fallback: just grab any 20 active institutions
+      const { data: fallback } = await supabase
+        .from("institutions")
+        .select("id")
+        .eq("is_active", true)
+        .not("ticker", "is", null)
+        .limit(MAX_INSTITUTIONS)
+
+      topInstitutionIds.push(...(fallback ?? []).map((i) => i.id))
+    }
+
     const { data: institutions } = await supabase
       .from("institutions")
       .select("id, name, ticker")
-      .eq("is_active", true)
-      .not("ticker", "is", null)
+      .in("id", topInstitutionIds)
 
     const results = []
 
     for (const inst of institutions ?? []) {
       if (!inst.ticker) continue
+      // Skip foreign tickers for Reddit/StockTwits (won't have data)
+      if (inst.ticker.includes(".")) continue
 
-      const searchTerms = [inst.ticker, inst.name]
       let totalMentions = 0
       let panicMentions = 0
       let stocktwitsScore = 0
 
-      // Reddit search across subreddits
+      // Reddit: search ticker only (not full name — saves half the requests)
       for (const subreddit of SUBREDDITS) {
-        for (const term of searchTerms) {
-          await new Promise((r) => setTimeout(r, 500)) // Reddit rate limit
+        await new Promise((r) => setTimeout(r, 500))
 
-          try {
-            const redditData = await fetchReddit(subreddit, term)
-            for (const post of redditData) {
-              totalMentions++
-              const text = `${post.title} ${post.selftext}`.toLowerCase()
-              if (PANIC_KEYWORDS.some((kw) => text.includes(kw))) {
-                panicMentions++
-              }
+        try {
+          const redditData = await fetchReddit(subreddit, inst.ticker)
+          for (const post of redditData) {
+            totalMentions++
+            const text = `${post.title} ${post.selftext}`.toLowerCase()
+            if (PANIC_KEYWORDS.some((kw) => text.includes(kw))) {
+              panicMentions++
             }
-          } catch {
-            // Reddit can be flaky, continue
           }
+        } catch {
+          // Reddit can be flaky
         }
       }
 
       // StockTwits
       try {
-        await new Promise((r) => setTimeout(r, 300))
+        await new Promise((r) => setTimeout(r, 200))
         stocktwitsScore = await fetchStockTwits(inst.ticker)
       } catch {
-        // Continue without StockTwits data
+        // Continue
       }
 
-      // Generate signals based on findings
       if (totalMentions > 0 || stocktwitsScore > 0) {
         await generateSocialSignal(inst.id, inst.name, totalMentions, panicMentions, stocktwitsScore)
       }
@@ -94,11 +127,7 @@ async function fetchReddit(subreddit: string, query: string): Promise<RedditPost
   const encoded = encodeURIComponent(query)
   const response = await fetch(
     `https://www.reddit.com/r/${subreddit}/search.json?q=${encoded}&sort=new&t=day&restrict_sr=1&limit=25`,
-    {
-      headers: {
-        "User-Agent": "FailureSignal/1.0",
-      },
-    },
+    { headers: { "User-Agent": "FailureSignal/1.0" } },
   )
 
   if (!response.ok) return []
@@ -144,35 +173,26 @@ async function generateSocialSignal(
   let severity: "low" | "medium" | "high" | "critical" | null = null
   let title = ""
 
-  // Both Reddit and StockTwits showing panic
   if (panicMentions >= 20 && stocktwitsBearish > 70) {
     severity = "critical"
     title = `Social media panic: ${panicMentions} panic posts + ${stocktwitsBearish.toFixed(0)}% bearish on StockTwits`
-  }
-  // High Reddit panic volume
-  else if (panicMentions >= 20) {
+  } else if (panicMentions >= 20) {
     severity = "high"
     title = `${panicMentions} panic-related social posts about ${institutionName} in 24h`
-  }
-  // Moderate combined signals
-  else if (panicMentions >= 5 && stocktwitsBearish > 60) {
+  } else if (panicMentions >= 5 && stocktwitsBearish > 60) {
     severity = "high"
     title = `Elevated social concern: ${panicMentions} panic posts, ${stocktwitsBearish.toFixed(0)}% bearish StockTwits`
-  }
-  // Moderate Reddit panic or high StockTwits bearishness
-  else if (panicMentions >= 5 || stocktwitsBearish > 75) {
+  } else if (panicMentions >= 5 || stocktwitsBearish > 75) {
     severity = "medium"
     title = `Social sentiment turning negative for ${institutionName}`
-  }
-  // Low level but worth tracking
-  else if (panicMentions >= 2 || (panicRatio > 0.5 && totalMentions >= 3)) {
+  } else if (panicMentions >= 2 || (panicRatio > 0.5 && totalMentions >= 3)) {
     severity = "low"
     title = `Emerging social media concern about ${institutionName}`
   }
 
   if (!severity) return
 
-  // Avoid duplicate signals — one per institution per 6 hours
+  // One signal per institution per 6 hours
   const sixHoursAgo = new Date()
   sixHoursAgo.setHours(sixHoursAgo.getHours() - 6)
 
@@ -191,7 +211,7 @@ async function generateSocialSignal(
     category: "social_panic",
     severity,
     title,
-    description: `Reddit: ${totalMentions} total mentions, ${panicMentions} panic-related (${(panicRatio * 100).toFixed(0)}% panic ratio). StockTwits: ${stocktwitsBearish.toFixed(0)}% bearish sentiment. Panic keywords tracked: bank run, collapse, insolvent, liquidity crisis, etc.`,
+    description: `Reddit: ${totalMentions} mentions, ${panicMentions} panic-related (${(panicRatio * 100).toFixed(0)}% panic ratio). StockTwits: ${stocktwitsBearish.toFixed(0)}% bearish.`,
     signal_value: panicMentions,
     signal_date: new Date().toISOString(),
     source: "Reddit + StockTwits",

@@ -6,7 +6,7 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 )
 
-const ALPHA_VANTAGE_KEY = Deno.env.get("ALPHA_VANTAGE_KEY") ?? ""
+const FINNHUB_KEY = Deno.env.get("FINNHUB_KEY") ?? ""
 
 // Trading signal thresholds
 const SHORT_ENTRY_THRESHOLD = 35 // Score above this = consider shorting
@@ -55,8 +55,8 @@ Deno.serve(async () => {
       let stockChangePct: number | null = null
       let volume: number | null = null
 
-      if (inst.ticker && ALPHA_VANTAGE_KEY) {
-        await new Promise((r) => setTimeout(r, 300)) // Rate limit
+      if (inst.ticker && FINNHUB_KEY && !inst.ticker.includes(".")) {
+        await new Promise((r) => setTimeout(r, 100)) // Finnhub: 60 req/min
         const priceData = await fetchStockPrice(inst.ticker)
         if (priceData) {
           stockPrice = priceData.price
@@ -183,19 +183,18 @@ function generateTradingSignals(
 async function fetchStockPrice(ticker: string): Promise<{ price: number; changePct: number; volume: number } | null> {
   try {
     const response = await fetch(
-      `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${encodeURIComponent(ticker)}&apikey=${ALPHA_VANTAGE_KEY}`,
+      `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(ticker)}&token=${FINNHUB_KEY}`,
     )
 
     if (!response.ok) return null
 
     const data = await response.json()
-    const quote = data["Global Quote"]
-    if (!quote || !quote["05. price"]) return null
+    if (!data.c || data.c === 0) return null
 
     return {
-      price: parseFloat(quote["05. price"]),
-      changePct: parseFloat(quote["10. change percent"]?.replace("%", "") ?? "0"),
-      volume: parseInt(quote["06. volume"] ?? "0", 10),
+      price: data.c,
+      changePct: data.dp ?? 0,
+      volume: 0, // Finnhub quote doesn't include volume
     }
   } catch {
     return null
