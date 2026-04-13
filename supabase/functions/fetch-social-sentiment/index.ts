@@ -17,7 +17,8 @@ const PANIC_KEYWORDS = [
 const SUBREDDITS = ["wallstreetbets", "stocks"]
 
 // Max institutions to scan per run — prioritize highest risk
-const MAX_INSTITUTIONS = 20
+// 10 banks × 2 subreddits × 500ms + StockTwits = ~15 seconds
+const MAX_INSTITUTIONS = 10
 
 Deno.serve(async () => {
   try {
