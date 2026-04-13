@@ -21,12 +21,16 @@ interface NormalizedArticle {
   raw_content: string
 }
 
+// GNews uses simple keyword queries — no OR/AND operators
 const BROAD_QUERIES = [
-  'bank liquidity crisis OR bank failure OR bank run OR emergency funding',
-  'bank credit downgrade OR default risk OR counterparty risk',
-  'investment bank layoffs OR losses OR write-down',
-  'bank stock plunge OR shares crash OR bailout OR regulatory action',
-  'bank client withdrawal OR fund redemption OR prime brokerage',
+  '"bank failure"',
+  '"liquidity crisis" bank',
+  '"credit downgrade" bank',
+  'bank bailout',
+  '"bank run"',
+  'bank "stock plunge"',
+  'bank regulatory action',
+  '"fund withdrawal" bank',
 ]
 
 Deno.serve(async (req) => {
