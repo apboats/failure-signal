@@ -6,8 +6,12 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 )
 
-const NEWS_API_KEY = Deno.env.get("NEWS_API_KEY")!
+const NEWS_API_KEY = Deno.env.get("NEWS_API_KEY") ?? ""
 const GNEWS_API_KEY = Deno.env.get("GNEWS_API_KEY") ?? ""
+
+// With paid GNews (1,000 req/day), fetch all institutions every run.
+// ~94 banks + 5 broad queries = ~99 requests per run.
+// Running hourly = ~99 requests/day (well under 1,000 limit).
 
 interface NormalizedArticle {
   title: string
@@ -32,6 +36,7 @@ Deno.serve(async (req) => {
     const results = []
 
     if (institution_id) {
+      // Single institution fetch
       const { data: inst } = await supabase
         .from("institutions")
         .select("id, name, ticker")
@@ -45,7 +50,7 @@ Deno.serve(async (req) => {
         results.push({ query: inst.name, ...saved })
       }
     } else {
-      // Fetch for tracked institutions
+      // Fetch all active institutions every run
       const { data: institutions } = await supabase
         .from("institutions")
         .select("id, name, ticker")
@@ -53,15 +58,21 @@ Deno.serve(async (req) => {
 
       for (const inst of institutions ?? []) {
         const query = `${inst.name} ${inst.ticker ?? ""}`.trim()
-        const articles = await fetchFromAllSources(query)
+        const articles = await fetchGNews(query)
         const saved = await saveAndAnalyze(articles, inst.id)
         results.push({ query: inst.name, ...saved })
       }
 
-      // Broad financial distress searches (auto-discovery)
+      // Also run broad distress queries (auto-discovery)
       for (const broadQuery of BROAD_QUERIES) {
-        const articles = await fetchFromAllSources(broadQuery)
-        const saved = await saveAndAnalyze(articles, null)
+        const articles = await fetchGNews(broadQuery)
+        // Supplement with NewsAPI for broader coverage on distress queries
+        if (NEWS_API_KEY) {
+          const newsApiArticles = await fetchNewsApi(broadQuery)
+          articles.push(...newsApiArticles)
+        }
+        const deduplicated = deduplicateArticles(articles)
+        const saved = await saveAndAnalyze(deduplicated, null)
         results.push({ query: broadQuery.slice(0, 50), ...saved })
       }
     }
@@ -74,32 +85,32 @@ Deno.serve(async (req) => {
   }
 })
 
-// Fetch from both NewsAPI and GNews, merge and deduplicate
 async function fetchFromAllSources(query: string): Promise<NormalizedArticle[]> {
   const allArticles: NormalizedArticle[] = []
 
-  // GNews first (full article content)
   if (GNEWS_API_KEY) {
     try {
-      const gnewsArticles = await fetchGNews(query)
-      allArticles.push(...gnewsArticles)
+      allArticles.push(...await fetchGNews(query))
     } catch (e) {
       console.error("GNews fetch error:", e)
     }
   }
 
-  // NewsAPI second (truncated content, but wider coverage)
-  try {
-    const newsApiArticles = await fetchNewsApi(query)
-    allArticles.push(...newsApiArticles)
-  } catch (e) {
-    console.error("NewsAPI fetch error:", e)
+  if (NEWS_API_KEY) {
+    try {
+      allArticles.push(...await fetchNewsApi(query))
+    } catch (e) {
+      console.error("NewsAPI fetch error:", e)
+    }
   }
 
-  // Deduplicate by URL
+  return deduplicateArticles(allArticles)
+}
+
+function deduplicateArticles(articles: NormalizedArticle[]): NormalizedArticle[] {
   const seen = new Set<string>()
-  return allArticles.filter((a) => {
-    if (seen.has(a.url)) return false
+  return articles.filter((a) => {
+    if (!a.url || seen.has(a.url)) return false
     seen.add(a.url)
     return true
   })
@@ -112,7 +123,8 @@ async function fetchGNews(query: string): Promise<NormalizedArticle[]> {
   )
 
   if (!response.ok) {
-    console.error("GNews API error:", await response.text())
+    const errorText = await response.text()
+    console.error("GNews API error:", errorText)
     return []
   }
 
@@ -131,7 +143,6 @@ async function fetchGNews(query: string): Promise<NormalizedArticle[]> {
     source: a.source.name,
     url: a.url,
     published_at: a.publishedAt,
-    // GNews returns full content — use it, fall back to description
     raw_content: a.content || a.description || "",
   }))
 }
@@ -167,6 +178,7 @@ async function fetchNewsApi(query: string): Promise<NormalizedArticle[]> {
   }))
 }
 
+// Just save articles — analysis is handled by process-articles on a schedule
 async function saveAndAnalyze(articles: NormalizedArticle[], institutionId: string | null) {
   const urls = articles.map((a) => a.url).filter(Boolean)
   if (urls.length === 0) return { new_articles: 0 }
@@ -191,22 +203,13 @@ async function saveAndAnalyze(articles: NormalizedArticle[], institutionId: stri
 
   if (newArticles.length === 0) return { new_articles: 0 }
 
-  const { data: inserted, error: insertError } = await supabase
+  const { error: insertError } = await supabase
     .from("news_articles")
     .insert(newArticles)
-    .select("id")
 
   if (insertError) {
     console.error("Insert error:", insertError)
     return { new_articles: 0, error: "Insert failed" }
-  }
-
-  for (const article of inserted ?? []) {
-    EdgeRuntime.waitUntil(
-      supabase.functions.invoke("analyze-news", {
-        body: { article_id: article.id },
-      })
-    )
   }
 
   return { new_articles: newArticles.length }

@@ -50,24 +50,24 @@ export function InstitutionDetail() {
 
   return (
     <div>
-      <Link to="/" className="mb-4 inline-flex items-center gap-1 text-sm text-slate-400 hover:text-white">
-        <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+      <Link to="/" className="mb-3 inline-flex items-center gap-1 text-sm text-slate-400 hover:text-white md:mb-4">
+        <ArrowLeft className="h-4 w-4" /> Back
       </Link>
 
-      <div className="mb-6 flex items-start justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-white">{institution.name}</h2>
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-2 md:mb-6">
+        <div className="min-w-0">
+          <h2 className="text-xl font-bold text-white md:text-2xl">{institution.name}</h2>
           {institution.ticker && (
-            <span className="text-sm text-slate-400">{institution.ticker} · {institution.sector}</span>
+            <span className="text-xs text-slate-400 md:text-sm">{institution.ticker} · {institution.sector}</span>
           )}
         </div>
         {latestScore && <ScoreBadge score={Number(latestScore.score)} />}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="space-y-4 md:grid md:grid-cols-3 md:gap-6 md:space-y-0">
         {/* Score History Chart */}
-        <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-6 lg:col-span-2">
-          <h3 className="mb-4 text-sm font-semibold text-slate-300">Risk Score History</h3>
+        <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-4 md:col-span-2 md:p-6">
+          <h3 className="mb-3 text-sm font-semibold text-slate-300 md:mb-4">Risk Score History</h3>
           {loadingScores ? (
             <div className="flex h-48 items-center justify-center text-sm text-slate-400">Loading...</div>
           ) : (
@@ -76,8 +76,8 @@ export function InstitutionDetail() {
         </div>
 
         {/* Risk Breakdown */}
-        <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-6">
-          <h3 className="mb-4 text-sm font-semibold text-slate-300">Risk Breakdown</h3>
+        <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-4 md:p-6">
+          <h3 className="mb-3 text-sm font-semibold text-slate-300 md:mb-4">Risk Breakdown</h3>
           {latestScore?.score_components ? (
             <RiskBreakdown components={latestScore.score_components} />
           ) : (
@@ -86,8 +86,8 @@ export function InstitutionDetail() {
         </div>
 
         {/* Signal Timeline */}
-        <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-6 lg:col-span-2">
-          <h3 className="mb-4 text-sm font-semibold text-slate-300">
+        <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-4 md:col-span-2 md:p-6">
+          <h3 className="mb-3 text-sm font-semibold text-slate-300 md:mb-4">
             Risk Signals ({signals.length})
           </h3>
           {loadingSignals ? (
@@ -98,8 +98,8 @@ export function InstitutionDetail() {
         </div>
 
         {/* News Feed */}
-        <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-6">
-          <h3 className="mb-4 text-sm font-semibold text-slate-300">
+        <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-4 md:p-6">
+          <h3 className="mb-3 text-sm font-semibold text-slate-300 md:mb-4">
             News ({articles.length})
           </h3>
           {loadingArticles ? (

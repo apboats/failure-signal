@@ -383,12 +383,12 @@ export function HistoricalAnalysis() {
   return (
     <div className="mx-auto max-w-4xl">
       {/* Tab Selector */}
-      <div className="mb-6 flex gap-2">
+      <div className="mb-4 flex gap-2 md:mb-6">
         {caseStudies.map((s) => (
           <button
             key={s.id}
             onClick={() => setActiveStudy(s.id)}
-            className={`rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+            className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors md:px-4 md:py-2.5 md:text-sm ${
               activeStudy === s.id
                 ? 'bg-blue-600 text-white'
                 : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
@@ -400,23 +400,23 @@ export function HistoricalAnalysis() {
       </div>
 
       {/* Header */}
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-white">
+      <div className="mb-6 md:mb-8">
+        <h2 className="text-xl font-bold text-white md:text-2xl">
           {study.name}: {study.subtitle}
         </h2>
-        <p className="mt-1 text-sm text-slate-500">{study.dateRange}</p>
-        <p className="mt-3 text-sm leading-relaxed text-slate-400">{study.overview}</p>
+        <p className="mt-1 text-xs text-slate-500 md:text-sm">{study.dateRange}</p>
+        <p className="mt-2 text-xs leading-relaxed text-slate-400 md:mt-3 md:text-sm">{study.overview}</p>
       </div>
 
       {/* Key Insight */}
-      <div className="mb-8 rounded-xl border border-blue-800 bg-blue-950/30 p-6">
+      <div className="mb-6 rounded-xl border border-blue-800 bg-blue-950/30 p-4 md:mb-8 md:p-6">
         <h3 className="text-sm font-semibold text-blue-400">Key Insight</h3>
-        <p className="mt-2 text-sm leading-relaxed text-slate-300">{study.keyInsight}</p>
+        <p className="mt-2 text-xs leading-relaxed text-slate-300 md:text-sm">{study.keyInsight}</p>
       </div>
 
       {/* Risk Score Progression */}
-      <div className="mb-8 rounded-xl border border-slate-700 bg-slate-800/50 p-6">
-        <h3 className="mb-4 text-sm font-semibold text-white">Risk Score Progression</h3>
+      <div className="mb-6 rounded-xl border border-slate-700 bg-slate-800/50 p-4 md:mb-8 md:p-6">
+        <h3 className="mb-3 text-sm font-semibold text-white md:mb-4">Risk Score Progression</h3>
         <div className="space-y-2">
           {study.scoreProgression.map((point, i) => {
             const color =
@@ -426,26 +426,51 @@ export function HistoricalAnalysis() {
               point.score >= 20 ? '#eab308' :
               '#22c55e'
             return (
-              <div key={i} className="flex items-center gap-3">
-                <span className="w-24 shrink-0 text-right text-xs text-slate-500">{point.date}</span>
-                <div className="flex-1">
-                  <div className="h-5 overflow-hidden rounded-full bg-slate-700">
-                    <div
-                      className="flex h-full items-center rounded-full px-2 text-xs font-bold transition-all"
-                      style={{
-                        width: `${Math.max(point.score, 3)}%`,
-                        backgroundColor: color,
-                        color: point.score > 15 ? 'white' : 'transparent',
-                      }}
-                    >
-                      {point.score > 15 ? `${point.score}%` : ''}
+              <div key={i}>
+                {/* Mobile: stacked layout */}
+                <div className="flex items-center gap-2 md:hidden">
+                  <span className="w-16 shrink-0 text-right text-[10px] text-slate-500">{point.date}</span>
+                  <div className="flex-1">
+                    <div className="h-4 overflow-hidden rounded-full bg-slate-700">
+                      <div
+                        className="flex h-full items-center rounded-full px-1.5 text-[10px] font-bold"
+                        style={{
+                          width: `${Math.max(point.score, 4)}%`,
+                          backgroundColor: color,
+                          color: point.score > 20 ? 'white' : 'transparent',
+                        }}
+                      >
+                        {point.score > 20 ? `${point.score}%` : ''}
+                      </div>
                     </div>
                   </div>
+                  {point.score <= 20 && (
+                    <span className="text-[10px] font-bold" style={{ color }}>{point.score}%</span>
+                  )}
                 </div>
-                {point.score <= 15 && (
-                  <span className="text-xs font-bold" style={{ color }}>{point.score}%</span>
-                )}
-                <span className="w-64 shrink-0 text-xs text-slate-500">{point.label}</span>
+                <p className="mt-0.5 pl-[72px] text-[10px] text-slate-500 md:hidden">{point.label}</p>
+                {/* Desktop: single row */}
+                <div className="hidden items-center gap-3 md:flex">
+                  <span className="w-24 shrink-0 text-right text-xs text-slate-500">{point.date}</span>
+                  <div className="flex-1">
+                    <div className="h-5 overflow-hidden rounded-full bg-slate-700">
+                      <div
+                        className="flex h-full items-center rounded-full px-2 text-xs font-bold transition-all"
+                        style={{
+                          width: `${Math.max(point.score, 3)}%`,
+                          backgroundColor: color,
+                          color: point.score > 15 ? 'white' : 'transparent',
+                        }}
+                      >
+                        {point.score > 15 ? `${point.score}%` : ''}
+                      </div>
+                    </div>
+                  </div>
+                  {point.score <= 15 && (
+                    <span className="text-xs font-bold" style={{ color }}>{point.score}%</span>
+                  )}
+                  <span className="w-64 shrink-0 text-xs text-slate-500">{point.label}</span>
+                </div>
               </div>
             )
           })}
@@ -467,44 +492,44 @@ export function HistoricalAnalysis() {
       </div>
 
       {/* Timeline */}
-      <div className="relative mb-10">
+      <div className="relative mb-8 md:mb-10">
         <div className="absolute left-[7px] top-0 bottom-0 w-0.5 bg-slate-700" />
 
-        <div className="space-y-4">
+        <div className="space-y-3 md:space-y-4">
           {study.timeline.map((event, i) => {
             const cat = SIGNAL_CATEGORIES[event.category]
             return (
-              <div key={i} className="relative pl-8">
+              <div key={i} className="relative pl-7 md:pl-8">
                 <div
-                  className="absolute left-0 top-1 h-4 w-4 rounded-full border-2"
+                  className="absolute left-0 top-1 h-3.5 w-3.5 rounded-full border-2 md:h-4 md:w-4"
                   style={{
                     borderColor: severityColors[event.severity],
                     backgroundColor: event.severity === 'critical' ? severityColors.critical : 'transparent',
                   }}
                 />
-                <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="mb-1 flex flex-wrap items-center gap-2">
-                        <span className="text-xs font-medium text-slate-500">{event.date}</span>
+                <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-3 md:p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                        <span className="text-[10px] font-medium text-slate-500 md:text-xs">{event.date}</span>
                         <span
-                          className="rounded px-1.5 py-0.5 text-xs font-medium"
+                          className="rounded px-1 py-0.5 text-[10px] font-medium md:px-1.5 md:text-xs"
                           style={{ backgroundColor: `${cat.color}20`, color: cat.color }}
                         >
                           {cat.label}
                         </span>
                         <span
-                          className="text-xs font-medium capitalize"
+                          className="text-[10px] font-medium capitalize md:text-xs"
                           style={{ color: severityColors[event.severity] }}
                         >
                           {event.severity}
                         </span>
                       </div>
-                      <h4 className="text-sm font-semibold text-white">{event.title}</h4>
-                      <p className="mt-1 text-xs leading-relaxed text-slate-400">{event.description}</p>
+                      <h4 className="text-xs font-semibold text-white md:text-sm">{event.title}</h4>
+                      <p className="mt-1 text-[10px] leading-relaxed text-slate-400 md:text-xs">{event.description}</p>
                     </div>
                     {event.stockPrice && (
-                      <span className="whitespace-nowrap font-mono text-sm text-slate-500">
+                      <span className="shrink-0 whitespace-nowrap font-mono text-xs text-slate-500 md:text-sm">
                         {event.stockPrice}
                       </span>
                     )}
@@ -517,9 +542,9 @@ export function HistoricalAnalysis() {
       </div>
 
       {/* Early Warning Thresholds */}
-      <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-6">
+      <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-4 md:p-6">
         <h3 className="mb-3 text-sm font-semibold text-white">Proposed Early-Warning Thresholds</h3>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 md:gap-4">
           {study.thresholds.map((item) => (
             <div key={item.signal} className="rounded-lg bg-slate-900 p-3">
               <div className="text-xs font-medium text-slate-300">{item.signal}</div>

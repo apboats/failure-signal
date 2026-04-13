@@ -20,11 +20,11 @@ export function ScoreChart({ scores }: { scores: RiskScore[] }) {
   }
 
   return (
-    <ResponsiveContainer width="100%" height={250}>
+    <ResponsiveContainer width="100%" height={200}>
       <LineChart data={data}>
         <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-        <XAxis dataKey="date" stroke="#64748b" fontSize={12} />
-        <YAxis domain={[0, 100]} stroke="#64748b" fontSize={12} />
+        <XAxis dataKey="date" stroke="#64748b" fontSize={10} tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+        <YAxis domain={[0, 100]} stroke="#64748b" fontSize={10} width={30} />
         <Tooltip
           contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
           labelStyle={{ color: '#f1f5f9' }}

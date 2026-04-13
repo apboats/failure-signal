@@ -35,12 +35,12 @@ export function Dashboard() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-4 md:mb-6">
         <p className="text-sm text-slate-400">
           Monitoring {institutions.length} institution{institutions.length !== 1 ? 's' : ''}
         </p>
       </div>
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 md:gap-6 lg:grid-cols-3">
         {sorted.map((inst) => (
           <InstitutionCard
             key={inst.id}

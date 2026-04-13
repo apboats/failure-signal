@@ -16,11 +16,11 @@ export function InstitutionCard({ institution, latestScore, recentSignals }: Pro
   return (
     <Link
       to={`/institution/${institution.id}`}
-      className="group flex flex-col rounded-xl border border-slate-700 bg-slate-800/50 p-6 transition-all hover:border-slate-600 hover:bg-slate-800"
+      className="group flex flex-col rounded-xl border border-slate-700 bg-slate-800/50 p-4 transition-all hover:border-slate-600 hover:bg-slate-800 md:p-6"
     >
-      <div className="mb-4 flex items-start justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-white">{institution.name}</h3>
+      <div className="mb-3 flex items-start justify-between gap-2 md:mb-4">
+        <div className="min-w-0">
+          <h3 className="truncate text-base font-semibold text-white md:text-lg">{institution.name}</h3>
           {institution.ticker && (
             <span className="text-sm text-slate-400">{institution.ticker}</span>
           )}

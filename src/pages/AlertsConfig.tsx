@@ -107,7 +107,7 @@ export function AlertsConfig() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-slate-400">
           Get notified when an institution's risk score crosses your threshold.
         </p>
@@ -123,7 +123,7 @@ export function AlertsConfig() {
 
       {/* Create Form */}
       {showForm && (
-        <div className="mb-6 rounded-xl border border-blue-800 bg-slate-800/80 p-6">
+        <div className="mb-4 rounded-xl border border-blue-800 bg-slate-800/80 p-4 md:mb-6 md:p-6">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-white">New Alert</h3>
             <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-white">
@@ -239,7 +239,7 @@ export function AlertsConfig() {
           {alerts.map((alert) => (
             <div
               key={alert.id}
-              className={`flex items-center justify-between rounded-xl border bg-slate-800/50 p-6 ${
+              className={`flex items-center justify-between gap-3 rounded-xl border bg-slate-800/50 p-4 md:p-6 ${
                 alert.is_active ? 'border-slate-700' : 'border-slate-800 opacity-60'
               }`}
             >
