@@ -29,7 +29,15 @@ For each article, provide a JSON response with:
   - title: short description of the signal
   - description: detailed context
 
-If the article is not about a specific financial institution, set institution_name to null.
+IMPORTANT: Only identify publicly traded, for-profit financial institutions. Set institution_name to null if the article is about:
+- Central banks (Federal Reserve, ECB, Bank of England, etc.)
+- Government-owned or state-controlled banks (e.g. Chinese state banks, development banks)
+- Cooperatives that are not publicly traded
+- Non-financial companies
+- Crypto exchanges or DeFi platforms
+- Already-defunct institutions (e.g. FTX, Credit Suisse, First Republic)
+
+The institution MUST have a tradable stock ticker. If you cannot identify one, set institution_name to null.
 Respond ONLY with valid JSON. No markdown formatting.`
 
 Deno.serve(async () => {
