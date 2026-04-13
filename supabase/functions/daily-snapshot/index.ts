@@ -8,11 +8,11 @@ const supabase = createClient(
 
 const FINNHUB_KEY = Deno.env.get("FINNHUB_KEY") ?? ""
 
-// Trading signal thresholds
-const SHORT_ENTRY_THRESHOLD = 35 // Score above this = consider shorting
-const SHORT_EXIT_THRESHOLD = 15 // Score drops below this = consider closing short
-const WATCH_THRESHOLD = 20 // Score above this = put on watch list
-const SCORE_SPIKE_THRESHOLD = 10 // Score jump of this many points in a day = signal
+// Trading signal thresholds (calibrated for normal market conditions)
+const SHORT_ENTRY_THRESHOLD = 15 // Score above this = consider shorting
+const SHORT_EXIT_THRESHOLD = 5  // Score drops below this = consider closing short
+const WATCH_THRESHOLD = 8       // Score above this = put on watch list
+const SCORE_SPIKE_THRESHOLD = 5  // Score jump of this many points in a day = signal
 
 Deno.serve(async () => {
   try {
