@@ -1,10 +1,11 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Bell, History, Activity, X, TrendingDown, Wallet } from 'lucide-react'
+import { LayoutDashboard, Bell, History, Activity, X, TrendingDown, Wallet, BarChart3 } from 'lucide-react'
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/signals', icon: TrendingDown, label: 'Trading Signals' },
   { to: '/portfolio', icon: Wallet, label: 'Portfolio' },
+  { to: '/correlation', icon: BarChart3, label: 'Score vs Price' },
   { to: '/alerts', icon: Bell, label: 'Alerts' },
   { to: '/history', icon: History, label: 'Case Studies' },
 ]
