@@ -18,6 +18,26 @@ Deno.serve(async () => {
   try {
     const today = new Date().toISOString().split("T")[0]
 
+    // Fetch benchmark prices via Yahoo (free, no rate limit)
+    for (const benchTicker of ["XLF", "SPY"]) {
+      try {
+        const benchData = await fetchYahooQuote(benchTicker)
+        if (benchData) {
+          await supabase.from("benchmark_snapshots").upsert(
+            {
+              ticker: benchTicker,
+              snapshot_date: today,
+              price: benchData.price,
+              change_pct: benchData.changePct,
+            },
+            { onConflict: "ticker,snapshot_date" },
+          )
+        }
+      } catch (e) {
+        console.error(`Benchmark fetch failed for ${benchTicker}:`, e)
+      }
+    }
+
     const { data: institutions } = await supabase
       .from("institutions")
       .select("id, name, ticker, sector")
@@ -194,8 +214,35 @@ async function fetchStockPrice(ticker: string): Promise<{ price: number; changeP
     return {
       price: data.c,
       changePct: data.dp ?? 0,
-      volume: 0, // Finnhub quote doesn't include volume
+      volume: 0,
     }
+  } catch {
+    return null
+  }
+}
+
+async function fetchYahooQuote(ticker: string): Promise<{ price: number; changePct: number } | null> {
+  try {
+    const response = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=2d&interval=1d`,
+      { headers: { "User-Agent": "Mozilla/5.0" } },
+    )
+
+    if (!response.ok) return null
+
+    const data = await response.json()
+    const result = data?.chart?.result?.[0]
+    if (!result) return null
+
+    const meta = result.meta
+    const closes = result.indicators?.quote?.[0]?.close ?? []
+    const price = meta?.regularMarketPrice ?? closes[closes.length - 1]
+    const prevClose = meta?.chartPreviousClose ?? closes[closes.length - 2]
+
+    if (!price) return null
+
+    const changePct = prevClose ? ((price - prevClose) / prevClose) * 100 : 0
+    return { price, changePct }
   } catch {
     return null
   }

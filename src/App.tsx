@@ -7,6 +7,7 @@ import { HistoricalAnalysis } from './pages/HistoricalAnalysis'
 import { TradingSignals } from './pages/TradingSignals'
 import { Portfolio } from './pages/Portfolio'
 import { Correlation } from './pages/Correlation'
+import { Backtest } from './pages/Backtest'
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
           <Route path="/signals" element={<TradingSignals />} />
           <Route path="/portfolio" element={<Portfolio />} />
           <Route path="/correlation" element={<Correlation />} />
+          <Route path="/backtest" element={<Backtest />} />
           <Route path="/alerts" element={<AlertsConfig />} />
           <Route path="/history" element={<HistoricalAnalysis />} />
         </Routes>

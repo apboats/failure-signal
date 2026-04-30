@@ -6,6 +6,7 @@ const titles: Record<string, string> = {
   '/signals': 'Trading Signals',
   '/portfolio': 'Portfolio',
   '/correlation': 'Score vs Price',
+  '/backtest': 'Backtest',
   '/alerts': 'Alerts',
   '/history': 'Case Studies',
 }
