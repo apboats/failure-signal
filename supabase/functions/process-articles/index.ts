@@ -29,15 +29,25 @@ For each article, provide a JSON response with:
   - title: short description of the signal
   - description: detailed context
 
-IMPORTANT: Only identify publicly traded, for-profit financial institutions. Set institution_name to null if the article is about:
+IMPORTANT FILTERING RULES — set institution_name to null if ANY of these apply:
+- Not a financial institution (e.g. airlines, retailers, tech companies, energy companies)
+- Not a bank or banking-adjacent (excludes pure payment processors like Visa/PayPal, insurance companies)
+- Does NOT have significant US operations or US-listed stock (we only track US-focused banks)
+- Foreign-only banks based in India, China, Indonesia, Thailand, Brazil, Korea, Japan, etc.
+  with no major US presence
 - Central banks (Federal Reserve, ECB, Bank of England, etc.)
-- Government-owned or state-controlled banks (e.g. Chinese state banks, development banks)
+- Government-owned or state-controlled banks
 - Cooperatives that are not publicly traded
-- Non-financial companies
-- Crypto exchanges or DeFi platforms
-- Already-defunct institutions (e.g. FTX, Credit Suisse, First Republic)
+- Crypto exchanges or DeFi platforms (except Coinbase which is US-listed and tracked)
+- Already-defunct institutions (FTX, Credit Suisse, First Republic, SVB)
+- Small community banks under $1B in assets
 
-The institution MUST have a tradable stock ticker. If you cannot identify one, set institution_name to null.
+ONLY include the institution if:
+- It is a publicly traded US bank, US investment bank, or US financial services company
+- OR a foreign bank with substantial US operations (HSBC, Deutsche Bank, UBS, Barclays, TD Bank)
+- It has a US-listed stock ticker (NYSE or NASDAQ)
+
+If unsure, default to null. Better to miss an institution than to add junk.
 Respond ONLY with valid JSON. No markdown formatting.`
 
 Deno.serve(async () => {
