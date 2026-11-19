@@ -419,14 +419,6 @@ verify_jwt = true
 [functions.process-articles]
 verify_jwt = true
 
-# analyze-news is retired: process-articles does its job and its source directory is being removed.
-# enabled = false keeps `supabase functions deploy` from trying to deploy a function with no source.
-# Delete the deployed copy from the dashboard (or `supabase functions delete analyze-news`), then
-# remove this block.
-[functions.analyze-news]
-enabled = false
-verify_jwt = true
-
 [analytics]
 enabled = true
 port = 54327

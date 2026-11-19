@@ -100,21 +100,25 @@ SEVERE 80, SCORE_SPIKE 15, with the bands Low < 25, Guarded < 40, Elevated < 60,
 The edge functions read exactly five secrets. Set them with `supabase secrets set KEY=value`;
 `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected by the platform and must not be set.
 
-| Secret              | Read by                                                                | Required                                                         |
-| ------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `ANTHROPIC_API_KEY` | `process-articles`, `fetch-sec-filings`                                | Yes, for any news-derived signal                                 |
-| `FINNHUB_KEY`       | `fetch-market-data`, `daily-snapshot`                                  | Yes for market data; snapshots degrade to null prices without it |
-| `GNEWS_API_KEY`     | `fetch-news` (primary, every run)                                      | Yes, for any news ingestion                                      |
-| `NEWS_API_KEY`      | `fetch-news` (optional supplement for the broad queries)               | No                                                               |
-| `SEC_EDGAR_EMAIL`   | `fetch-insider-trades`, `fetch-sec-filings` (EDGAR User-Agent contact) | Yes for EDGAR feeds                                              |
+| Secret                | Read by                                                                | Required                                                              |
+| --------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `ANTHROPIC_API_KEY`   | `process-articles`, `fetch-sec-filings`                                | Yes, for any news-derived signal                                      |
+| `FINNHUB_KEY`         | `fetch-market-data`, `daily-snapshot`                                  | Yes for market data; snapshots degrade to null prices without it      |
+| `GNEWS_API_KEY`       | `fetch-news` (primary, every run)                                      | Yes, for any news ingestion                                           |
+| `NEWS_API_KEY`        | `fetch-news` (optional supplement for the broad queries)               | No                                                                    |
+| `SEC_EDGAR_EMAIL`     | `fetch-insider-trades`, `fetch-sec-filings` (EDGAR User-Agent contact) | Yes for EDGAR feeds                                                   |
+| `FN_SERVICE_ROLE_KEY` | every function (`_shared/auth.ts`)                                     | Yes when `FN_AUTH_REQUIRED=true`: the service-role JWT the cron sends |
 
 Optional switches, also set as secrets:
 
 - `ANTHROPIC_MODEL`: model for the two LLM functions. Default `claude-sonnet-5-5` (a bulk extraction
   job); set `claude-opus-5-5` for higher-quality extraction at roughly twice the token price. Set it
   explicitly rather than relying on the compiled-in fallback in `supabase/functions/_shared/anthropic.ts`.
-- `FN_AUTH_REQUIRED=true`: makes every function reject calls without the service-role Authorization
-  header. Set only after `00005` is applied (step 6 of the runbook).
+- `FN_AUTH_REQUIRED=true`: makes every function reject calls whose Authorization bearer is neither
+  `FN_SERVICE_ROLE_KEY` nor the platform-injected `SUPABASE_SERVICE_ROLE_KEY`. Set only after `00005`
+  is applied (step 6 of the runbook). On the live project the injected variable does not equal the
+  service_role key the Management API reports (and that Vault holds), so `FN_SERVICE_ROLE_KEY` must be
+  set to that key (`supabase projects api-keys`) before enforcement is turned on.
 
 The frontend needs `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (see `.env.example`); the anon key
 is public by design.

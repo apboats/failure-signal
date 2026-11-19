@@ -13,8 +13,13 @@
  * the order of "deploy functions" and "apply migration 00005 (cron starts
  * sending the Authorization header)" cannot stop the pipeline. The README
  * documents turning it on once 00005 is applied. When on, the caller must
- * present `Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>`; the gateway's
- * verify_jwt alone is not enough because it also accepts the public anon key.
+ * present `Authorization: Bearer <key>` where key is FN_SERVICE_ROLE_KEY (an
+ * explicit copy of the service-role JWT the cron sends from Vault) or the
+ * platform-injected SUPABASE_SERVICE_ROLE_KEY; the gateway's verify_jwt alone
+ * is not enough because it also accepts the public anon key. FN_SERVICE_ROLE_KEY
+ * exists because on the live project the injected variable does not equal the
+ * service_role key the Management API reports, so a copy the operator controls
+ * is the only value that is guaranteed to match what Vault holds.
  *
  * Dependency-free so vitest can import it under Node.
  */
@@ -43,10 +48,13 @@ export function authRequired(): boolean {
 export function requireServiceRole(req: Request): Response | null {
   if (!authRequired()) return null
 
-  const expected = readEnv('SUPABASE_SERVICE_ROLE_KEY')
-  if (expected === undefined) {
+  const accepted = [
+    readEnv('FN_SERVICE_ROLE_KEY'),
+    readEnv('SUPABASE_SERVICE_ROLE_KEY'),
+  ].filter((key): key is string => key !== undefined)
+  if (accepted.length === 0) {
     console.error(
-      '[auth] FN_AUTH_REQUIRED=true but SUPABASE_SERVICE_ROLE_KEY is not set; refusing every caller',
+      '[auth] FN_AUTH_REQUIRED=true but neither FN_SERVICE_ROLE_KEY nor SUPABASE_SERVICE_ROLE_KEY is set; refusing every caller',
     )
     return unauthorized(req, 'service role key unavailable')
   }
@@ -58,9 +66,11 @@ export function requireServiceRole(req: Request): Response | null {
   if (presented === null) {
     return unauthorized(req, 'malformed Authorization header')
   }
-  if (!timingSafeEqual(presented, expected)) {
-    return unauthorized(req, 'token mismatch')
-  }
+  // Check every accepted key so the time taken does not reveal which one matched.
+  let matched = false
+  for (const key of accepted)
+    if (timingSafeEqual(presented, key)) matched = true
+  if (!matched) return unauthorized(req, 'token mismatch')
   return null
 }
 

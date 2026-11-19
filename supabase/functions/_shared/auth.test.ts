@@ -99,6 +99,19 @@ describe('requireServiceRole', () => {
     }
   })
 
+  it('accepts FN_SERVICE_ROLE_KEY when it differs from the injected key', () => {
+    stubDenoEnv({
+      FN_AUTH_REQUIRED: 'true',
+      SUPABASE_SERVICE_ROLE_KEY: KEY,
+      FN_SERVICE_ROLE_KEY: 'explicit-copy-of-the-vault-key',
+    })
+    expect(
+      requireServiceRole(request('Bearer explicit-copy-of-the-vault-key')),
+    ).toBeNull()
+    expect(requireServiceRole(request(`Bearer ${KEY}`))).toBeNull()
+    expect(requireServiceRole(request('Bearer neither'))?.status).toBe(401)
+  })
+
   it('refuses every caller when enforcing but the key is unavailable', () => {
     stubDenoEnv({ FN_AUTH_REQUIRED: 'true' })
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -109,7 +122,7 @@ describe('requireServiceRole', () => {
     // visible in the function log no matter which cron job hits it first.
     expect(error).toHaveBeenCalledTimes(2)
     expect(String(error.mock.calls[0][0])).toContain(
-      'SUPABASE_SERVICE_ROLE_KEY is not set',
+      'neither FN_SERVICE_ROLE_KEY nor SUPABASE_SERVICE_ROLE_KEY is set',
     )
   })
 })
