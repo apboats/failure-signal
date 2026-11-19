@@ -29,3 +29,6 @@ dist-ssr
 
 # Supabase
 supabase/.temp
+
+# Netlify CLI state (machine-specific)
+.netlify

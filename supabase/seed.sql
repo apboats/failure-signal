@@ -2,7 +2,8 @@
 
 -- Insert the institution
 insert into institutions (id, name, ticker, sector, description) values
-  ('00000000-0000-0000-0000-000000000001', 'Bear Stearns', 'BSC', 'investment_bank', 'Former major U.S. investment bank that collapsed in March 2008 during the subprime mortgage crisis.');
+  ('00000000-0000-0000-0000-000000000001', 'Bear Stearns', 'BSC', 'investment_bank', 'Former major U.S. investment bank that collapsed in March 2008 during the subprime mortgage crisis.')
+on conflict (id) do nothing;
 
 -- Insert historical news articles
 insert into news_articles (institution_id, title, source, published_at, summary, sentiment_score, sentiment_label, relevance_score, analyzed_at) values
@@ -44,4 +45,5 @@ insert into risk_scores (institution_id, score, score_components, signal_count, 
   ('00000000-0000-0000-0000-000000000001', 58.00, '{"client_withdrawal": 80, "liquidity_warning": 60, "counterparty_action": 50, "news_sentiment": 30, "stock_drop": 40}', 9, '2008-03-12'),
   ('00000000-0000-0000-0000-000000000001', 78.00, '{"cds_spike": 100, "counterparty_action": 90, "client_withdrawal": 80, "liquidity_warning": 70, "stock_drop": 50, "news_sentiment": 35}', 11, '2008-03-13'),
   ('00000000-0000-0000-0000-000000000001', 95.50, '{"cds_spike": 100, "liquidity_warning": 100, "counterparty_action": 90, "stock_drop": 100, "credit_downgrade": 100, "client_withdrawal": 80, "regulatory_signal": 80, "news_sentiment": 40}', 14, '2008-03-14'),
-  ('00000000-0000-0000-0000-000000000001', 98.00, '{"cds_spike": 100, "liquidity_warning": 100, "counterparty_action": 90, "stock_drop": 100, "credit_downgrade": 100, "regulatory_signal": 100, "client_withdrawal": 80, "news_sentiment": 50}', 14, '2008-03-16');
+  ('00000000-0000-0000-0000-000000000001', 98.00, '{"cds_spike": 100, "liquidity_warning": 100, "counterparty_action": 90, "stock_drop": 100, "credit_downgrade": 100, "regulatory_signal": 100, "client_withdrawal": 80, "news_sentiment": 50}', 14, '2008-03-16')
+on conflict (institution_id, computed_at) do nothing;

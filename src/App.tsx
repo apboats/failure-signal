@@ -1,28 +1,21 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { AppShell } from './components/layout/AppShell'
-import { Dashboard } from './pages/Dashboard'
-import { InstitutionDetail } from './pages/InstitutionDetail'
-import { AlertsConfig } from './pages/AlertsConfig'
-import { HistoricalAnalysis } from './pages/HistoricalAnalysis'
-import { TradingSignals } from './pages/TradingSignals'
-import { Portfolio } from './pages/Portfolio'
-import { Correlation } from './pages/Correlation'
-import { Backtest } from './pages/Backtest'
+import { Suspense } from 'react'
+import { BrowserRouter, useRoutes } from 'react-router-dom'
+import { routes } from '@/app/routes'
+import { AppShell } from '@/components/layout/AppShell'
+import { PageState } from '@/components/ui'
+
+/** useRoutes reads the Router context, so the table mounts one level below BrowserRouter. */
+function AppRoutes() {
+  return useRoutes(routes)
+}
 
 export default function App() {
   return (
     <BrowserRouter>
       <AppShell>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/institution/:id" element={<InstitutionDetail />} />
-          <Route path="/signals" element={<TradingSignals />} />
-          <Route path="/portfolio" element={<Portfolio />} />
-          <Route path="/correlation" element={<Correlation />} />
-          <Route path="/backtest" element={<Backtest />} />
-          <Route path="/alerts" element={<AlertsConfig />} />
-          <Route path="/history" element={<HistoricalAnalysis />} />
-        </Routes>
+        <Suspense fallback={<PageState kind="loading" skeleton="card" />}>
+          <AppRoutes />
+        </Suspense>
       </AppShell>
     </BrowserRouter>
   )

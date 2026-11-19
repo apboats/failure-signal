@@ -41,7 +41,13 @@ create type signal_category as enum (
   'regulatory_signal',
   'credit_downgrade',
   'executive_departure',
-  'news_sentiment'
+  'news_sentiment',
+  -- Added later by hand on the live project (see 00003); listed here so a fresh
+  -- `supabase db reset` reaches 00002, which inserts weights for these values.
+  'insider_selling',
+  'peer_contagion',
+  'social_panic',
+  'lawmaker_selling'
 );
 
 create type signal_severity as enum ('low', 'medium', 'high', 'critical');

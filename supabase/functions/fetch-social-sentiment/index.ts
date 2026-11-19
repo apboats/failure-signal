@@ -1,220 +1,403 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts"
-import { createClient } from "jsr:@supabase/supabase-js@2"
+import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
+import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { json, requireServiceRole } from '../_shared/auth.ts'
+import { fetchWithRetry, sleep } from '../_shared/http.ts'
 
 const supabase = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  Deno.env.get('SUPABASE_URL')!,
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 )
 
-const PANIC_KEYWORDS = [
-  "bank run", "collapse", "insolvent", "bankrupt", "pulling money",
-  "get your money out", "liquidity crisis", "fdic", "bail out", "bailout",
-  "default", "ponzi", "fraud", "seized", "emergency", "plunge", "crash",
-  "withdraw", "withdrawal", "failing", "failed", "contagion",
-]
+/**
+ * StockTwits bearish share per bank. Every active US-listed bank is scanned
+ * each run; a reading counts only once enough messages carry a sentiment tag,
+ * so a thin stream (5 of 8 tagged bearish) never fires. A trailing baseline
+ * per ticker is deferred until a social_snapshots table exists.
+ */
 
-// Only scan top 2 most relevant subreddits (cuts requests by 60%)
-const SUBREDDITS = ["wallstreetbets", "stocks"]
+/** Sentiment-tagged messages needed before the bearish share means anything. */
+const MIN_TAGGED = 20
+/** Bearish share (percent of tagged messages) above which a signal fires. */
+const BEARISH_PCT_THRESHOLD = 75
+/** Share at or above which the signal is high instead of medium. */
+const BEARISH_PCT_HIGH = 90
+/** Pages of up to 30 messages read per ticker while tagged < MIN_TAGGED. */
+const MAX_PAGES = 3
+/** Delay between StockTwits requests; the unauthenticated limit is 200/hour per IP. */
+const PACE_MS = 500
+/** Stop starting new tickers after this much wall clock, before the runtime limit ends the run. */
+const DEADLINE_MS = 120_000
+/** One signal per institution per window unless the reading got materially worse. */
+const DEDUPE_WINDOW_HOURS = 24
+const DEDUPE_WORSE_BY_PCT = 10
 
-// Max institutions to scan per run — prioritize highest risk
-// 10 banks × 2 subreddits × 500ms + StockTwits = ~15 seconds
-const MAX_INSTITUTIONS = 10
+interface StockTwitsMessage {
+  id: number
+  created_at?: string
+  entities?: { sentiment?: { basic?: string } | null } | null
+}
 
-Deno.serve(async () => {
+interface StockTwitsPage {
+  messages?: StockTwitsMessage[]
+  cursor?: { more?: boolean; max?: number }
+}
+
+interface Reading {
+  tagged: number
+  bearish: number
+  /** Bearish share of tagged messages, percent with one decimal. */
+  pct: number
+  /** Messages read, tagged or not. */
+  sampled: number
+  /** created_at of the oldest message read (ISO): the start of the measured window. */
+  since: string | null
+}
+
+type StockTwitsResult =
+  | { status: 'ok'; reading: Reading }
+  | { status: 'insufficient'; tagged: number; sampled: number }
+  | { status: 'http'; httpStatus: number }
+  | { status: 'network'; message: string }
+
+type SignalOutcome = 'inserted' | 'below_threshold' | 'deduped' | 'error'
+
+interface ScanRow {
+  institution: string
+  ticker: string
+  status: SignalOutcome | 'insufficient' | 'unavailable' | 'skipped'
+  tagged?: number
+  bearish?: number
+  pct?: number
+  sampled?: number
+  http_status?: number
+  detail?: string
+}
+
+interface ScannableInstitution {
+  id: string
+  name: string
+  ticker: string
+}
+
+type StopReason = 'rate_limited' | 'deadline'
+
+Deno.serve(async (req) => {
+  const denied = requireServiceRole(req)
+  if (denied) return denied
+
+  const startedAt = Date.now()
+
   try {
-    // Get the 20 highest-risk institutions (by latest score), plus any with score > 0
-    const { data: scores } = await supabase
-      .from("risk_scores")
-      .select("institution_id, score")
-      .order("computed_at", { ascending: false })
+    const { data: institutions, error: institutionsError } = await supabase
+      .from('institutions')
+      .select('id, name, ticker')
+      .eq('is_active', true)
+      .not('ticker', 'is', null)
+      .order('ticker')
+    if (institutionsError) throw institutionsError
 
-    // Dedupe to latest score per institution
-    const latestScores = new Map<string, number>()
-    for (const s of scores ?? []) {
-      if (!latestScores.has(s.institution_id)) {
-        latestScores.set(s.institution_id, Number(s.score))
+    // StockTwits covers US listings; dotted tickers (1398.HK) are other exchanges.
+    const scannable = (institutions ?? []).filter(
+      (inst): inst is ScannableInstitution =>
+        typeof inst.ticker === 'string' &&
+        inst.ticker.length > 0 &&
+        !inst.ticker.includes('.'),
+    )
+
+    // Rotate the start so a run that hits the deadline or a 429 does not
+    // starve the same tail of the list every time (runs every 2 hours).
+    const ordered = rotate(scannable, Math.floor(startedAt / 7_200_000))
+
+    const results: ScanRow[] = []
+    // Two institution rows can share a ticker (SAN, UCB): fetch each once.
+    const byTicker = new Map<string, StockTwitsResult>()
+    let fetched = 0
+    let failed = 0
+    let fired = 0
+    let skipped = 0
+    let stopReason: StopReason | null = null
+
+    for (const inst of ordered) {
+      const ticker = inst.ticker.toUpperCase()
+
+      if (stopReason === null && Date.now() - startedAt > DEADLINE_MS) {
+        stopReason = 'deadline'
+        console.warn(
+          `[social] ${DEADLINE_MS} ms deadline reached after ${byTicker.size} tickers; the rest are skipped this run`,
+        )
       }
-    }
+      if (stopReason !== null && !byTicker.has(ticker)) {
+        skipped++
+        results.push({
+          institution: inst.name,
+          ticker,
+          status: 'skipped',
+          detail: stopReason,
+        })
+        continue
+      }
 
-    // Sort by score descending, take top N
-    const topInstitutionIds = [...latestScores.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, MAX_INSTITUTIONS)
-      .map(([id]) => id)
+      let result = byTicker.get(ticker)
+      if (result === undefined) {
+        if (byTicker.size > 0) await sleep(PACE_MS)
+        result = await fetchStockTwits(ticker)
+        byTicker.set(ticker, result)
 
-    if (topInstitutionIds.length === 0) {
-      // Fallback: just grab any 20 active institutions
-      const { data: fallback } = await supabase
-        .from("institutions")
-        .select("id")
-        .eq("is_active", true)
-        .not("ticker", "is", null)
-        .limit(MAX_INSTITUTIONS)
-
-      topInstitutionIds.push(...(fallback ?? []).map((i) => i.id))
-    }
-
-    const { data: institutions } = await supabase
-      .from("institutions")
-      .select("id, name, ticker")
-      .in("id", topInstitutionIds)
-
-    const results = []
-
-    for (const inst of institutions ?? []) {
-      if (!inst.ticker) continue
-      // Skip foreign tickers for Reddit/StockTwits (won't have data)
-      if (inst.ticker.includes(".")) continue
-
-      let totalMentions = 0
-      let panicMentions = 0
-      let stocktwitsScore = 0
-
-      // Reddit: search ticker only (not full name — saves half the requests)
-      for (const subreddit of SUBREDDITS) {
-        await new Promise((r) => setTimeout(r, 500))
-
-        try {
-          const redditData = await fetchReddit(subreddit, inst.ticker)
-          for (const post of redditData) {
-            totalMentions++
-            const text = `${post.title} ${post.selftext}`.toLowerCase()
-            if (PANIC_KEYWORDS.some((kw) => text.includes(kw))) {
-              panicMentions++
-            }
-          }
-        } catch {
-          // Reddit can be flaky
+        if (result.status === 'ok' || result.status === 'insufficient') {
+          fetched++
+        } else {
+          failed++
+        }
+        if (result.status === 'http' && result.httpStatus === 429) {
+          stopReason = 'rate_limited'
+          console.warn(
+            '[social] StockTwits returned 429; stopping the scan for this run',
+          )
         }
       }
 
-      // StockTwits
-      try {
-        await new Promise((r) => setTimeout(r, 200))
-        stocktwitsScore = await fetchStockTwits(inst.ticker)
-      } catch {
-        // Continue
+      switch (result.status) {
+        case 'ok': {
+          const outcome = await maybeSignal(inst, ticker, result.reading)
+          if (outcome === 'inserted') fired++
+          results.push({
+            institution: inst.name,
+            ticker,
+            status: outcome,
+            tagged: result.reading.tagged,
+            bearish: result.reading.bearish,
+            pct: result.reading.pct,
+            sampled: result.reading.sampled,
+          })
+          break
+        }
+        case 'insufficient':
+          results.push({
+            institution: inst.name,
+            ticker,
+            status: 'insufficient',
+            tagged: result.tagged,
+            sampled: result.sampled,
+          })
+          break
+        case 'http':
+          results.push({
+            institution: inst.name,
+            ticker,
+            status: 'unavailable',
+            http_status: result.httpStatus,
+          })
+          break
+        case 'network':
+          results.push({
+            institution: inst.name,
+            ticker,
+            status: 'unavailable',
+            detail: result.message,
+          })
+          break
       }
-
-      if (totalMentions > 0 || stocktwitsScore > 0) {
-        await generateSocialSignal(inst.id, inst.name, totalMentions, panicMentions, stocktwitsScore)
-      }
-
-      results.push({
-        institution: inst.name,
-        total_mentions: totalMentions,
-        panic_mentions: panicMentions,
-        stocktwits_bearish: stocktwitsScore,
-      })
     }
 
-    return new Response(JSON.stringify({ success: true, results }), {
-      headers: { "Content-Type": "application/json" },
-    })
+    const summary = {
+      institutions: ordered.length,
+      tickers: byTicker.size,
+      fetched,
+      failed,
+      fired,
+      skipped,
+      stop_reason: stopReason,
+      elapsed_ms: Date.now() - startedAt,
+    }
+
+    if (fetched === 0 && failed > 0) {
+      console.error(
+        `[social] StockTwits unavailable for every ticker tried (${failed}); nothing scanned`,
+      )
+      return json(
+        {
+          success: false,
+          error: 'stocktwits unavailable',
+          ...summary,
+          results,
+        },
+        502,
+      )
+    }
+
+    return json({ success: true, ...summary, results })
   } catch (error) {
-    return new Response(JSON.stringify({ error: String(error) }), { status: 500 })
+    console.error('[social] run failed:', error)
+    return json({ success: false, error: String(error) }, 500)
   }
 })
 
-interface RedditPost {
-  title: string
-  selftext: string
-  score: number
-  num_comments: number
-  created_utc: number
+function rotate<T>(items: T[], seed: number): T[] {
+  if (items.length === 0) return items
+  const offset = seed % items.length
+  return [...items.slice(offset), ...items.slice(0, offset)]
 }
 
-async function fetchReddit(subreddit: string, query: string): Promise<RedditPost[]> {
-  const encoded = encodeURIComponent(query)
-  const response = await fetch(
-    `https://www.reddit.com/r/${subreddit}/search.json?q=${encoded}&sort=new&t=day&restrict_sr=1&limit=25`,
-    { headers: { "User-Agent": "FailureSignal/1.0" } },
-  )
-
-  if (!response.ok) return []
-
-  const data = await response.json()
-  return (data.data?.children ?? []).map((c: { data: RedditPost }) => c.data)
-}
-
-async function fetchStockTwits(ticker: string): Promise<number> {
-  const response = await fetch(
-    `https://api.stocktwits.com/api/2/streams/symbol/${ticker}.json`,
-  )
-
-  if (!response.ok) return 0
-
-  const data = await response.json()
-  const messages = data.messages ?? []
-
-  if (messages.length === 0) return 0
-
+/**
+ * Reads the symbol stream newest-first, paging with `max=<oldest id>` until
+ * MIN_TAGGED sentiment-tagged messages are in hand or MAX_PAGES is reached.
+ * Messages are deduplicated by id so the cursor's inclusive/exclusive
+ * semantics cannot double count. Any non-OK response is logged and returned
+ * as `http`, distinct from a stream that is merely too thin.
+ */
+async function fetchStockTwits(ticker: string): Promise<StockTwitsResult> {
+  const seen = new Set<number>()
+  let tagged = 0
   let bearish = 0
-  let total = 0
+  let sampled = 0
+  let since: string | null = null
+  let max: number | undefined
 
-  for (const msg of messages) {
-    if (msg.entities?.sentiment) {
-      total++
-      if (msg.entities.sentiment.basic === "Bearish") bearish++
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    if (page > 1) await sleep(PACE_MS)
+
+    const url = new URL(
+      `https://api.stocktwits.com/api/2/streams/symbol/${encodeURIComponent(ticker)}.json`,
+    )
+    if (max !== undefined) url.searchParams.set('max', String(max))
+
+    let response: Response
+    try {
+      // retries: 0 keeps the helper's non-OK log line; a 429 ends the run
+      // instead of waiting on Retry-After for every remaining ticker.
+      response = await fetchWithRetry(
+        url,
+        { headers: { Accept: 'application/json' } },
+        { retries: 0, label: `stocktwits ${ticker} page ${page}` },
+      )
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e)
+      console.warn(`[social] stocktwits ${ticker} page ${page}: ${message}`)
+      return { status: 'network', message }
     }
+
+    if (!response.ok) {
+      console.warn(
+        `[social] stocktwits ${ticker} page ${page}: HTTP ${response.status}`,
+      )
+      return { status: 'http', httpStatus: response.status }
+    }
+
+    const body = (await response.json()) as StockTwitsPage
+    const messages = body.messages ?? []
+    if (messages.length === 0) break
+
+    let oldestId = Number.POSITIVE_INFINITY
+    for (const message of messages) {
+      if (typeof message.id !== 'number' || seen.has(message.id)) continue
+      seen.add(message.id)
+      sampled++
+      oldestId = Math.min(oldestId, message.id)
+
+      const basic = message.entities?.sentiment?.basic
+      if (basic === 'Bearish' || basic === 'Bullish') {
+        tagged++
+        if (basic === 'Bearish') bearish++
+      }
+
+      // ISO 8601 timestamps order lexically.
+      if (
+        message.created_at &&
+        (since === null || message.created_at < since)
+      ) {
+        since = message.created_at
+      }
+    }
+
+    if (tagged >= MIN_TAGGED) break
+    if (body.cursor?.more === false) break
+
+    // Pages are newest-first, so older pages are not busier. Stop when even
+    // twice the tag rate seen so far could not reach MIN_TAGGED by MAX_PAGES
+    // (after page 1 that is 3 or fewer tagged of 30); it keeps ~59 tickers
+    // at 500 ms pacing inside the deadline without changing any reading
+    // that could have fired.
+    const projected = (tagged / page) * MAX_PAGES * 2
+    if (projected < MIN_TAGGED) break
+
+    const nextMax = body.cursor?.max ?? oldestId
+    if (!Number.isFinite(nextMax) || (max !== undefined && nextMax >= max)) {
+      break
+    }
+    max = nextMax
   }
 
-  return total > 0 ? (bearish / total) * 100 : 0
+  if (tagged < MIN_TAGGED) return { status: 'insufficient', tagged, sampled }
+
+  return {
+    status: 'ok',
+    reading: {
+      tagged,
+      bearish,
+      pct: Math.round((bearish / tagged) * 1000) / 10,
+      sampled,
+      since,
+    },
+  }
 }
 
-async function generateSocialSignal(
-  institutionId: string,
-  institutionName: string,
-  totalMentions: number,
-  panicMentions: number,
-  stocktwitsBearish: number,
-) {
-  const panicRatio = totalMentions > 0 ? panicMentions / totalMentions : 0
+/**
+ * Inserts a social_panic signal when the reading clears the threshold and no
+ * signal in the dedupe window already recorded a share within
+ * DEDUPE_WORSE_BY_PCT points of it.
+ */
+async function maybeSignal(
+  inst: ScannableInstitution,
+  ticker: string,
+  reading: Reading,
+): Promise<SignalOutcome> {
+  if (reading.pct <= BEARISH_PCT_THRESHOLD) return 'below_threshold'
 
-  let severity: "low" | "medium" | "high" | "critical" | null = null
-  let title = ""
+  const windowStart = new Date(
+    Date.now() - DEDUPE_WINDOW_HOURS * 3_600_000,
+  ).toISOString()
 
-  if (panicMentions >= 20 && stocktwitsBearish > 70) {
-    severity = "critical"
-    title = `Social media panic: ${panicMentions} panic posts + ${stocktwitsBearish.toFixed(0)}% bearish on StockTwits`
-  } else if (panicMentions >= 20) {
-    severity = "high"
-    title = `${panicMentions} panic-related social posts about ${institutionName} in 24h`
-  } else if (panicMentions >= 5 && stocktwitsBearish > 60) {
-    severity = "high"
-    title = `Elevated social concern: ${panicMentions} panic posts, ${stocktwitsBearish.toFixed(0)}% bearish StockTwits`
-  } else if (panicMentions >= 5 || stocktwitsBearish > 75) {
-    severity = "medium"
-    title = `Social sentiment turning negative for ${institutionName}`
-  } else if (panicMentions >= 2 || (panicRatio > 0.5 && totalMentions >= 3)) {
-    severity = "low"
-    title = `Emerging social media concern about ${institutionName}`
+  const { data: previous, error: previousError } = await supabase
+    .from('risk_signals')
+    .select('id, signal_value, signal_date')
+    .eq('institution_id', inst.id)
+    .eq('category', 'social_panic')
+    .gte('signal_date', windowStart)
+    .order('signal_date', { ascending: false })
+    .limit(1)
+  if (previousError) {
+    console.error(
+      `[social] dedupe lookup failed for ${inst.name}: ${previousError.message}`,
+    )
+    return 'error'
   }
 
-  if (!severity) return
+  const last = previous?.[0]
+  if (last) {
+    const lastPct = Number(last.signal_value ?? 0)
+    if (reading.pct < lastPct + DEDUPE_WORSE_BY_PCT) return 'deduped'
+  }
 
-  // One signal per institution per 6 hours
-  const sixHoursAgo = new Date()
-  sixHoursAgo.setHours(sixHoursAgo.getHours() - 6)
+  const severity: 'medium' | 'high' =
+    reading.pct >= BEARISH_PCT_HIGH ? 'high' : 'medium'
+  const window = reading.since ? ` since ${reading.since.slice(0, 10)}` : ''
 
-  const { data: existing } = await supabase
-    .from("risk_signals")
-    .select("id")
-    .eq("institution_id", institutionId)
-    .eq("category", "social_panic")
-    .gte("signal_date", sixHoursAgo.toISOString())
-    .limit(1)
-
-  if (existing && existing.length > 0) return
-
-  await supabase.from("risk_signals").insert({
-    institution_id: institutionId,
-    category: "social_panic",
+  const { error: insertError } = await supabase.from('risk_signals').insert({
+    institution_id: inst.id,
+    category: 'social_panic',
     severity,
-    title,
-    description: `Reddit: ${totalMentions} mentions, ${panicMentions} panic-related (${(panicRatio * 100).toFixed(0)}% panic ratio). StockTwits: ${stocktwitsBearish.toFixed(0)}% bearish.`,
-    signal_value: panicMentions,
+    title: `StockTwits ${reading.pct}% bearish on ${inst.name}`,
+    description: `$${ticker} on StockTwits: ${reading.bearish} of ${reading.tagged} sentiment-tagged messages bearish (${reading.pct}%) across ${reading.sampled} messages${window}. Fires at ${MIN_TAGGED}+ tagged and >${BEARISH_PCT_THRESHOLD}% bearish.`,
+    signal_value: reading.pct,
     signal_date: new Date().toISOString(),
-    source: "Reddit + StockTwits",
+    source: 'StockTwits',
   })
+  if (insertError) {
+    console.error(
+      `[social] signal insert failed for ${inst.name}: ${insertError.message}`,
+    )
+    return 'error'
+  }
+
+  return 'inserted'
 }

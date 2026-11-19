@@ -1,12 +1,79 @@
-@import "tailwindcss";
+@import '@fontsource-variable/inter';
+@import 'tailwindcss';
+
+/*
+ * Design tokens (design brief §2). Every colour references Tailwind's own v4
+ * palette variables, so the utilities and the charts (which read these tokens
+ * with var() from JS strings) can never drift apart. `static` keeps every token
+ * in :root even when no utility uses it: the class scanner cannot see the
+ * --color-chart-* references inside src/components/charts/chartTheme.ts.
+ */
+@theme static {
+  --font-sans:
+    'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Surfaces and text */
+  --color-bg: var(--color-slate-950);
+  --color-surface: var(--color-slate-900);
+  --color-surface-2: var(--color-slate-800);
+  --color-border: color-mix(in oklch, var(--color-slate-700) 60%, transparent);
+  --color-text: var(--color-slate-100);
+  --color-text-muted: var(--color-slate-400);
+  /* Alias of --color-text-muted so the `text-muted` utility resolves (Tailwind maps text-muted to --color-muted). */
+  --color-muted: var(--color-slate-400);
+  --color-accent: var(--color-blue-500);
+
+  /* Risk ramp (bands in shared/constants.ts RISK_LEVELS) */
+  --color-risk-1: var(--color-emerald-400);
+  --color-risk-2: var(--color-amber-400);
+  --color-risk-3: var(--color-orange-400);
+  --color-risk-4: var(--color-red-400);
+  --color-risk-5: var(--color-rose-500);
+
+  /* Valence: P&L sign, return sign, model right/wrong. Never direction or risk. */
+  --color-pos: var(--color-emerald-400);
+  --color-neg: var(--color-red-400);
+
+  /* Signal severity */
+  --color-sev-low: var(--color-slate-400);
+  --color-sev-medium: var(--color-amber-400);
+  --color-sev-high: var(--color-orange-400);
+  --color-sev-critical: var(--color-rose-500);
+
+  /* Chart series and chrome (read by src/components/charts/chartTheme.ts) */
+  --color-chart-1: var(--color-blue-400);
+  --color-chart-2: var(--color-violet-400);
+  --color-chart-3: var(--color-cyan-400);
+  --color-chart-4: var(--color-amber-400);
+  --color-chart-grid: var(--color-slate-800);
+  --color-chart-axis: var(--color-slate-500);
+  --color-chart-tooltip-bg: var(--color-slate-900);
+  --color-chart-tooltip-border: var(--color-slate-700);
+}
 
 body {
   margin: 0;
-  background-color: #0f172a;
-  color: #f1f5f9;
-  font-family: Inter, system-ui, -apple-system, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  color-scheme: dark;
 }
 
 #root {
-  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Focus ring for every interactive element (brief §7). */
+@utility focus-ring {
+  @apply outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse {
+    animation: none;
+  }
+  *,
+  ::before,
+  ::after {
+    transition: none !important;
+  }
 }

@@ -1,97 +1,62 @@
-export type SignalCategory =
-  | 'stock_drop'
-  | 'cds_spike'
-  | 'liquidity_warning'
-  | 'client_withdrawal'
-  | 'counterparty_action'
-  | 'regulatory_signal'
-  | 'credit_downgrade'
-  | 'executive_departure'
-  | 'news_sentiment'
-  | 'insider_selling'
-  | 'peer_contagion'
-  | 'social_panic'
-  | 'lawmaker_selling'
+/**
+ * Domain row types. Every table/view shape is derived from the hand-written
+ * Database type in src/lib/database.types.ts so a column rename shows up as a
+ * compile error in the pages, not as `undefined` at runtime.
+ */
+import type { Enums, Tables, TablesInsert } from '@/lib/database.types'
 
-export type SignalSeverity = 'low' | 'medium' | 'high' | 'critical'
+export type SignalCategory = Enums<'signal_category'>
+export type SignalSeverity = Enums<'signal_severity'>
+export type {
+  Json,
+  PositionDirection,
+  ScoreComponents,
+  SentimentLabel,
+  TradingSignalType,
+} from '@/lib/database.types'
 
-export type SentimentLabel =
-  | 'very_negative'
-  | 'negative'
-  | 'neutral'
-  | 'positive'
-  | 'very_positive'
+export type Institution = Tables<'institutions'>
+export type NewsArticle = Tables<'news_articles'>
+export type RiskSignal = Tables<'risk_signals'>
+export type RiskScore = Tables<'risk_scores'>
+export type AlertConfig = Tables<'alert_configs'>
+export type AlertHistory = Tables<'alert_history'>
+export type ScoringWeight = Tables<'scoring_weights'>
 
-export interface Institution {
-  id: string
-  name: string
-  ticker: string | null
-  sector: string
-  description: string | null
-  logo_url: string | null
-  is_active: boolean
-  created_at: string
-  updated_at: string
-}
+/** One daily_snapshots row (score + closing price per bank per day). */
+export type Snapshot = Tables<'daily_snapshots'>
+export type TradingSignal = Tables<'trading_signals'>
+export type Position = Tables<'positions'>
+export type BenchmarkSnapshot = Tables<'benchmark_snapshots'>
 
-export interface NewsArticle {
-  id: string
-  institution_id: string
-  title: string
-  source: string | null
-  url: string | null
-  published_at: string | null
-  raw_content: string | null
-  summary: string | null
-  sentiment_score: number | null
-  sentiment_label: SentimentLabel | null
-  relevance_score: number | null
-  analyzed_at: string | null
-  created_at: string
-}
+/**
+ * Newest score per institution (latest_risk_scores view shape). `score` and
+ * `computed_at` are null for a bank that has never been scored.
+ */
+export type LatestScore = Tables<'latest_risk_scores'>
 
-export interface RiskSignal {
-  id: string
-  institution_id: string
-  news_article_id: string | null
-  category: SignalCategory
-  severity: SignalSeverity
-  title: string
-  description: string | null
-  signal_value: number | null
-  signal_date: string
-  source: string | null
-  is_confirmed: boolean
-  created_at: string
-}
+/** Payload accepted by the positions / alert_configs inserts. */
+export type PositionInsert = TablesInsert<'positions'>
+export type AlertConfigInsert = TablesInsert<'alert_configs'>
 
-export interface RiskScore {
-  id: string
-  institution_id: string
+/** One point of a score history line (snapshot_date -> risk_score). */
+export interface ScoreHistoryPoint {
+  /** ISO date 'YYYY-MM-DD'; parse with parseISO, never new Date('YYYY-MM-DD'). */
+  date: string
   score: number
-  score_components: Record<SignalCategory, number>
-  signal_count: number
-  computed_at: string
 }
 
-export interface AlertConfig {
-  id: string
-  institution_id: string
-  user_id: string
-  threshold_score: number
-  signal_categories: SignalCategory[] | null
-  notify_email: boolean
-  notify_in_app: boolean
-  is_active: boolean
-  created_at: string
+/** Newest priced daily snapshot for a bank. */
+export interface LatestPrice {
+  price: number
+  change_pct: number | null
+  /** snapshot_date the price belongs to ('YYYY-MM-DD'). */
+  date: string
 }
 
-export interface AlertHistory {
-  id: string
-  alert_config_id: string
-  institution_id: string
-  triggered_score: number | null
-  trigger_reason: string | null
-  acknowledged_at: string | null
-  created_at: string
-}
+/** Badge / accent tone names, matching the colour tokens in src/index.css. */
+export type RiskToken = 'risk-1' | 'risk-2' | 'risk-3' | 'risk-4' | 'risk-5'
+export type SeverityToken =
+  'sev-low' | 'sev-medium' | 'sev-high' | 'sev-critical'
+export type Tone =
+  'neutral' | 'accent' | 'pos' | 'neg' | RiskToken | SeverityToken

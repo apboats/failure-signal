@@ -6,9 +6,11 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', '.netlify']),
+
+  // Browser app and shared domain code: the only place React rules apply.
   {
-    files: ['**/*.{ts,tsx}'],
+    files: ['src/**/*.{ts,tsx}', 'shared/**/*.ts'],
     extends: [
       js.configs.recommended,
       tseslint.configs.recommended,
@@ -16,8 +18,28 @@ export default defineConfig([
       reactRefresh.configs.vite,
     ],
     languageOptions: {
-      ecmaVersion: 2020,
+      ecmaVersion: 'latest',
       globals: globals.browser,
+    },
+  },
+
+  // Supabase edge functions run on Deno: Deno globals, no React rules.
+  {
+    files: ['supabase/functions/**/*.ts'],
+    extends: [js.configs.recommended, tseslint.configs.recommended],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      globals: globals.denoBuiltin,
+    },
+  },
+
+  // Node-side build tooling.
+  {
+    files: ['vite.config.ts'],
+    extends: [js.configs.recommended, tseslint.configs.recommended],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      globals: globals.node,
     },
   },
 ])

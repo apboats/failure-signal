@@ -1,34 +1,42 @@
-import { useLocation } from 'react-router-dom'
 import { Menu } from 'lucide-react'
+import { matchRoutes, useLocation } from 'react-router-dom'
+import { routes } from '@/app/routes'
+import { FreshnessPill } from '@/features/watchlist/FreshnessPill'
 
-const titles: Record<string, string> = {
-  '/': 'Dashboard',
-  '/signals': 'Trading Signals',
-  '/portfolio': 'Portfolio',
-  '/correlation': 'Score vs Price',
-  '/backtest': 'Backtest',
-  '/alerts': 'Alerts',
-  '/history': 'Case Studies',
+export interface HeaderProps {
+  /** True while the mobile drawer is open (drives aria-expanded). */
+  menuOpen: boolean
+  onMenuToggle: () => void
 }
 
-export function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
+/**
+ * Top bar: the current route's title from the single route table (plain text,
+ * since each page's PageHeader owns the h1) and, on md+, the pipeline
+ * freshness pill so a stalled scoring job is visible on every route.
+ */
+export function Header({ menuOpen, onMenuToggle }: HeaderProps) {
   const location = useLocation()
-  const title = titles[location.pathname] ?? 'Institution Detail'
+  const title =
+    matchRoutes(routes, location)?.at(-1)?.route.title ?? 'Not found'
 
   return (
-    <header className="flex items-center justify-between border-b border-slate-700 bg-slate-900/50 px-4 py-3 md:px-6 md:py-4">
-      <div className="flex items-center gap-3">
+    <header className="flex items-center justify-between gap-4 border-b border-border bg-surface px-4 py-3 md:px-6">
+      <div className="flex min-w-0 items-center gap-3">
         <button
+          type="button"
           onClick={onMenuToggle}
-          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white md:hidden"
+          aria-label="Open navigation"
+          aria-expanded={menuOpen}
+          aria-controls="app-sidebar"
+          className="focus-ring rounded-lg p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-text md:hidden"
         >
-          <Menu className="h-5 w-5" />
+          <Menu aria-hidden="true" className="size-5" />
         </button>
-        <h1 className="text-lg font-semibold text-white md:text-xl">{title}</h1>
+        <p className="truncate text-sm font-medium text-text">{title}</p>
       </div>
-      <span className="hidden text-sm text-slate-400 sm:block">
-        {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-      </span>
+      <div className="hidden md:block">
+        <FreshnessPill />
+      </div>
     </header>
   )
 }

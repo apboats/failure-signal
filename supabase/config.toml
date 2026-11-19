@@ -375,6 +375,58 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# Edge-function gateway settings, one block per function (13 total; keep this list in sync with the
+# directories under supabase/functions). verify_jwt = true makes the gateway require a Supabase JWT
+# (anon or service role) on every call; the in-function `requireServiceRole` guard, enabled with the
+# FN_AUTH_REQUIRED=true secret, is what actually restricts callers to the service-role key.
+#
+# ORDER MATTERS: apply supabase/migrations/00005_cron_jobs.sql first (it makes pg_cron send the
+# service-role Authorization header from Vault). Deploying with verify_jwt = true before that migration
+# is applied makes every cron invocation fail with 401 and stops the pipeline.
+[functions.backfill-benchmarks]
+verify_jwt = true
+
+[functions.backfill-institution-prices]
+verify_jwt = true
+
+[functions.check-alerts]
+verify_jwt = true
+
+[functions.compute-risk-score]
+verify_jwt = true
+
+[functions.daily-snapshot]
+verify_jwt = true
+
+[functions.fetch-insider-trades]
+verify_jwt = true
+
+[functions.fetch-lawmaker-trades]
+verify_jwt = true
+
+[functions.fetch-market-data]
+verify_jwt = true
+
+[functions.fetch-news]
+verify_jwt = true
+
+[functions.fetch-sec-filings]
+verify_jwt = true
+
+[functions.fetch-social-sentiment]
+verify_jwt = true
+
+[functions.process-articles]
+verify_jwt = true
+
+# analyze-news is retired: process-articles does its job and its source directory is being removed.
+# enabled = false keeps `supabase functions deploy` from trying to deploy a function with no source.
+# Delete the deployed copy from the dashboard (or `supabase functions delete analyze-news`), then
+# remove this block.
+[functions.analyze-news]
+enabled = false
+verify_jwt = true
+
 [analytics]
 enabled = true
 port = 54327
