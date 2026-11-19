@@ -46,7 +46,7 @@ describe('toTradingDaySeries', () => {
     expect(a.map((point) => point.date)).toEqual(TRADING_DAYS)
     expect(a[3]).toEqual({
       date: '2026-06-04',
-      score: 9,
+      score: 45,
       price: 100,
       changePct: -1.96,
     })

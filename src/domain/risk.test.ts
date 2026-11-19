@@ -48,15 +48,15 @@ describe('RISK_LEVELS', () => {
 describe('getRiskLevel', () => {
   it.each([
     [0, 'Low'],
-    [4.99, 'Low'],
+    [24.99, 'Low'],
     [SHORT_EXIT, 'Guarded'],
-    [7.99, 'Guarded'],
+    [39.99, 'Guarded'],
     [WATCH, 'Elevated'],
-    [14.99, 'Elevated'],
+    [59.99, 'Elevated'],
     [SHORT_ENTRY, 'High'],
-    [24.99, 'High'],
+    [79.99, 'High'],
     [SEVERE, 'Critical'],
-    [33.5, 'Critical'],
+    [87.7, 'Critical'],
     [SCORE_MAX, 'Critical'],
     [150, 'Critical'],
     [-1, 'Low'],
@@ -74,7 +74,7 @@ describe('null handling', () => {
   it('riskLevelOf returns null for a missing score', () => {
     expect(riskLevelOf(null)).toBeNull()
     expect(riskLevelOf(undefined)).toBeNull()
-    expect(riskLevelOf(6.4)?.label).toBe('Guarded')
+    expect(riskLevelOf(30)?.label).toBe('Guarded')
   })
 
   it('scoreTone is neutral for a missing score and the band token otherwise', () => {
@@ -101,7 +101,7 @@ describe('scoreAxisMax', () => {
   it('never drops below SEVERE and adds 20% headroom', () => {
     expect(scoreAxisMax([])).toBe(SEVERE)
     expect(scoreAxisMax([1, 6.4, 3])).toBe(SEVERE)
-    expect(scoreAxisMax([33.5])).toBe(Math.ceil(33.5 * 1.2))
-    expect(scoreAxisMax([Number.NaN, 30])).toBe(36)
+    expect(scoreAxisMax([90])).toBe(Math.ceil(90 * 1.2))
+    expect(scoreAxisMax([Number.NaN, 75])).toBe(90)
   })
 })

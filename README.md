@@ -86,10 +86,14 @@ was later added by hand plus the fixes from the 2026-11 review.
 | `latest_risk_scores` (view)           | One row per active bank with its newest score, or null if never scored (`00004`). The frontend uses it when present.                                                       |
 | `snapshot_series(p_since)` (function) | Optional: the priced snapshot series as one jsonb value, immune to the row cap. The frontend does not depend on it.                                                        |
 
-Scores are an index, not a percentage. Thresholds live in `shared/thresholds.ts` (mirrored in
-`supabase/functions/_shared/thresholds.ts`, parity-tested): SHORT_EXIT 5, WATCH 8, SHORT_ENTRY 15,
-SEVERE 25. The live distribution since April 2026 tops out at 33.5 with p90 around 8; the scoring formula
-itself is unchanged by this upgrade (rescaling it is an owner decision, see deferred items).
+Scores are an index, not a percentage. `compute-risk-score` builds a raw weighted composite and stores
+the display score `100 x (1 - exp(-raw / 16))`, keeping the raw value in `score_components._raw`. The
+raw composite is structurally pinned near zero under normal conditions (per-category caps times sub-1
+weights; live maximum 33.5 since April 2026), so the saturating transform spreads the useful range over
+0-100 while keeping every historical row in the same order. `ops/08` applied the same transform to the
+stored history on 2026-11-18. Thresholds live in `shared/thresholds.ts` (mirrored in
+`supabase/functions/_shared/thresholds.ts`, parity-tested): SHORT_EXIT 25, WATCH 40, SHORT_ENTRY 60,
+SEVERE 80, SCORE_SPIKE 15, with the bands Low < 25, Guarded < 40, Elevated < 60, High < 80, Critical >= 80.
 
 ## Secrets
 
@@ -218,6 +222,8 @@ list`; if `00001`/`00002` are not recorded as applied, `supabase migration repai
    - `ops/04_deactivate_stale_trading_signals.sql`.
    - `ops/05_purge_risk_scores_initial.sql`, then `vacuum (analyze) risk_scores;` on its own.
    - `ops/06_dedupe_news_urls.sql` (creates the `news_articles_url_key` index).
+   - `ops/08_rescale_scores.sql`, only after the rescaled `compute-risk-score` is deployed (idempotent via
+     `public.ops_applied`).
    - `ops/07_backfill_cik.md` whenever convenient; it only enables the EDGAR feeds for more banks.
 
 Every migration is idempotent and every ops script has a verification query before its `commit`, so a

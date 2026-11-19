@@ -193,7 +193,7 @@ describe('EventsTable', () => {
   })
 
   it('renders scores through ScoreValue and excess through Delta', () => {
-    expect(html).toMatch(/text-risk-3[^>]*>9\.0/)
+    expect(html).toMatch(/text-risk-3[^>]*>45\.0/)
     expect(html).toMatch(/text-pos[^>]*>-1\.50%/)
   })
 })
@@ -209,7 +209,7 @@ describe('EventControls', () => {
     )
     expect(html).toMatch(/<label for="event-level-threshold"/)
     expect(html).toMatch(
-      /<input type="range" min="1" max="25" step="1"[^>]*id="event-level-threshold"/,
+      /<input type="range" min="1" max="80" step="1"[^>]*id="event-level-threshold"/,
     )
     expect(html).toContain('1, 5, 10 and 20 trading days')
     expect(html).not.toContain('Caution')

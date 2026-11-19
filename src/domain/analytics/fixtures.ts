@@ -6,14 +6,14 @@
  * weekend rows that copy Friday's close, as the live table does.
  *
  * Banks (trading-day index 0..11):
- * - bank-a: scores 0,1,2,9,9.5,10,9,8.5,8,7,6,5. Level 8 crosses once at index 3
- *   (Jun 4) and stays above through index 8. Velocity (delta 5) holds on
+ * - bank-a: scores 0,5,10,45,47.5,50,45,42.5,40,35,30,25. Level 40 (WATCH) crosses once at index 3
+ *   (Jun 4) and stays above through index 8. Velocity (delta 15) holds on
  *   several consecutive days but must fire once.
- * - bank-b: starts at 9 with no prior row (first-row no-event), then 2s. Its
+ * - bank-b: starts at 45 with no prior row (first-row no-event), then 10s. Its
  *   Jun 15 row copies Jun 12's price and change (a holiday copy to drop).
  * - bank-d: crosses at index 1 (Jun 2), prices fall throughout.
  * - bank-e, bank-f: cross at index 5 (Jun 8), the same date.
- * - bank-g: two rows nine calendar days apart (0 then 9): too wide a gap.
+ * - bank-g: two rows nine calendar days apart (0 then 45): too wide a gap.
  *
  * Benchmark XLF: closes Jun 1–5 (+ weekend copies) and Jun 8, then nothing until
  * Jun 16. As-of lookups work through Jun 12 (gap 4 from Jun 8) and fail on
@@ -53,27 +53,27 @@ interface BankSpec {
 const BANKS: readonly BankSpec[] = [
   {
     id: 'bank-a',
-    scores: [0, 1, 2, 9, 9.5, 10, 9, 8.5, 8, 7, 6, 5],
+    scores: [0, 5, 10, 45, 47.5, 50, 45, 42.5, 40, 35, 30, 25],
     prices: [100, 101, 102, 100, 98, 97, 96, 95, 94, 95, 96, 97],
   },
   {
     id: 'bank-b',
-    scores: [9, 9, 9, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+    scores: [45, 45, 45, 10, 10, 10, 10, 10, 10, 10, 10, 10],
     prices: [50, 50.5, 51, 51.5, 52, 52.5, 53, 53.5, 54, 54.5, 55, 55.5],
   },
   {
     id: 'bank-d',
-    scores: [0, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9],
+    scores: [0, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45],
     prices: [20, 20.2, 19.8, 19.6, 19, 18.8, 18.5, 18.2, 18, 17.8, 17.5, 17.2],
   },
   {
     id: 'bank-e',
-    scores: [0, 0, 0, 0, 0, 9, 9, 9, 9, 9, 9, 9],
+    scores: [0, 0, 0, 0, 0, 45, 45, 45, 45, 45, 45, 45],
     prices: [30, 30.3, 30.6, 30.9, 31.2, 31.5, 31, 30.5, 30, 29.5, 29, 28.5],
   },
   {
     id: 'bank-f',
-    scores: [0, 0, 0, 0, 0, 9, 9, 9, 9, 9, 9, 9],
+    scores: [0, 0, 0, 0, 0, 45, 45, 45, 45, 45, 45, 45],
     prices: [80, 80.8, 81.6, 82.4, 83.2, 84, 83, 82, 81, 80, 79, 78],
   },
 ]
@@ -145,7 +145,7 @@ export function fixtureRows(): PricedSnapshotPoint[] {
     b15.stock_change_pct = b12.stock_change_pct
   }
   rows.push(row('bank-g', '2026-06-01', 0, 10, null))
-  rows.push(row('bank-g', '2026-06-10', 9, 9, -10))
+  rows.push(row('bank-g', '2026-06-10', 45, 9, -10))
   return rows.reverse()
 }
 

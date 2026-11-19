@@ -39,7 +39,8 @@ file is the list of traps that are not inferable from the code.
   Supabase client directly; reads and writes live in `src/api/*` and are consumed through the
   `src/queries/*` React Query hooks. Design tokens live in `src/index.css`; no raw hex colours or raw
   `slate-*` utilities in pages.
-- Risk thresholds (SHORT_EXIT 5, WATCH 8, SHORT_ENTRY 15, SEVERE 25, SCORE_SPIKE 5) live in
+- Risk thresholds (SHORT_EXIT 25, WATCH 40, SHORT_ENTRY 60, SEVERE 80, SCORE_SPIKE 15) and the
+  raw-to-display transform (`toDisplayScore`, scale 16) live in
   `shared/thresholds.ts` and are mirrored byte-for-byte in `supabase/functions/_shared/thresholds.ts`.
   A parity test fails `npm run test` if the two drift; change both or neither. Scores are an index
   (render `6.4`), never a percentage.

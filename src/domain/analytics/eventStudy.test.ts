@@ -15,47 +15,47 @@ import { toTradingDaySeries } from './series'
 
 const series = toTradingDaySeries(fixtureRows()).series
 const xlf = buildBenchmarkIndex(fixtureBenchmarks()).lookup('XLF')
-const level8 = { kind: 'level', threshold: 8 } as const
+const level40 = { kind: 'level', threshold: 40 } as const
 
 describe('eventAt', () => {
   const a = series.get('bank-a')!
 
   it('level: fires on the first crossing only, with the previous day as the prior', () => {
-    expect(eventAt(a, 3, level8)).toBe(2)
+    expect(eventAt(a, 3, level40)).toBe(10)
     for (const i of [0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11])
-      expect(eventAt(a, i, level8)).toBeNull()
+      expect(eventAt(a, i, level40)).toBeNull()
   })
 
   it('level: never fires on the first row (no prior observation)', () => {
     const b = series.get('bank-b')!
-    expect(b[0].score).toBe(9)
-    expect(eventAt(b, 0, level8)).toBeNull()
+    expect(b[0].score).toBe(45)
+    expect(eventAt(b, 0, level40)).toBeNull()
   })
 
   it('level: needs the prior within four calendar days', () => {
     const g = series.get('bank-g')!
-    expect(g[1].score).toBe(9)
-    expect(eventAt(g, 1, level8)).toBeNull()
+    expect(g[1].score).toBe(45)
+    expect(eventAt(g, 1, level40)).toBeNull()
   })
 
   it('velocity: fires once per spike even when the delta condition holds for days', () => {
-    const def = { kind: 'velocity', delta: 5, windowDays: 5 } as const
+    const def = { kind: 'velocity', delta: 25, windowDays: 5 } as const
     const fired = a.map((_, i) => eventAt(a, i, def))
     expect(fired.filter((prior) => prior !== null)).toHaveLength(1)
-    expect(fired[5]).toBe(0) // Jun 8: 10 − 0 over five rows
-    expect(fired[6]).toBeNull() // 9 − 1 = 8 still holds, but so did yesterday
+    expect(fired[5]).toBe(0) // Jun 8: 50 − 0 over five rows
+    expect(fired[6]).toBeNull() // 45 − 5 = 40 still holds, but so did yesterday
     expect(fired[7]).toBeNull()
   })
 
   it('velocity: with a two-day window the plateau still fires once', () => {
-    const def = { kind: 'velocity', delta: 5, windowDays: 2 } as const
+    const def = { kind: 'velocity', delta: 25, windowDays: 2 } as const
     const fired = a.map((_, i) => eventAt(a, i, def))
     expect(fired.filter((prior) => prior !== null)).toHaveLength(1)
-    expect(fired[3]).toBe(1)
+    expect(fired[3]).toBe(5)
   })
 
   it('velocity: a lookback before the series start is not an event', () => {
-    const def = { kind: 'velocity', delta: 5, windowDays: 20 } as const
+    const def = { kind: 'velocity', delta: 25, windowDays: 20 } as const
     expect(a.every((_, i) => eventAt(a, i, def) === null)).toBe(true)
   })
 })
@@ -68,8 +68,8 @@ describe('pctReturn', () => {
   })
 })
 
-describe('detectEvents (level 8)', () => {
-  const study = detectEvents(series, level8, xlf)
+describe('detectEvents (level 40)', () => {
+  const study = detectEvents(series, level40, xlf)
 
   it('finds four crossings on three distinct dates across four banks', () => {
     expect(
@@ -88,8 +88,8 @@ describe('detectEvents (level 8)', () => {
 
   it('computes raw and market-relative excess returns per horizon', () => {
     const a = study.events.find((event) => event.institutionId === 'bank-a')!
-    expect(a.score).toBe(9)
-    expect(a.priorScore).toBe(2)
+    expect(a.score).toBe(45)
+    expect(a.priorScore).toBe(10)
     expect(a.raw[1]).toBeCloseTo(-2, 12)
     expect(a.excess[1]).toBeCloseTo(-2 - -0.5, 12)
     expect(a.raw[5]).toBeCloseTo(-6, 12)
@@ -119,7 +119,7 @@ describe('detectEvents (level 8)', () => {
   })
 
   it('returns no events and empty baselines for an empty series', () => {
-    const empty = detectEvents(new Map(), level8, xlf)
+    const empty = detectEvents(new Map(), level40, xlf)
     expect(empty.events).toEqual([])
     expect(empty.distinctDates).toBe(0)
     expect(empty.baseline[5]).toEqual([])
@@ -127,7 +127,7 @@ describe('detectEvents (level 8)', () => {
 })
 
 describe('aggregateStats', () => {
-  const study = detectEvents(series, level8, xlf)
+  const study = detectEvents(series, level40, xlf)
   const stats = aggregateStats(study.events, study.baseline, study.horizons)
   const at = (h: number) => stats.find((row) => row.horizon === h)!
 
@@ -231,7 +231,7 @@ function statsRow(overrides: Partial<HorizonStats>): HorizonStats {
 
 describe('verdict', () => {
   it('is insufficient below thirty events at 5d, with the measured baseline attached', () => {
-    const study = detectEvents(series, level8, xlf)
+    const study = detectEvents(series, level40, xlf)
     const result = verdict(aggregateStats(study.events, study.baseline))
     expect(result.kind).toBe('insufficient')
     expect(result.horizon).toBe(5)

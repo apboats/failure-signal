@@ -10,9 +10,9 @@ describe('highScoreThreshold', () => {
   it('is WATCH for a quiet bank and the 80th percentile when that is higher', () => {
     expect(highScoreThreshold([0, 0, 0, 0, 0])).toBe(WATCH)
     expect(highScoreThreshold([])).toBe(WATCH)
-    expect(highScoreThreshold([0, 1, 2, 9, 9.5, 10, 9, 8.5, 8, 7, 6, 5])).toBe(
-      9,
-    )
+    expect(
+      highScoreThreshold([0, 5, 10, 45, 47.5, 50, 45, 42.5, 40, 35, 30, 25]),
+    ).toBe(45)
   })
 })
 
@@ -38,7 +38,7 @@ describe('computeLeadLag', () => {
     )!
     expect(a.days).toBe(12)
     expect(a.pairs).toBe(11)
-    expect(a.threshold).toBe(9)
+    expect(a.threshold).toBe(45)
     expect(a.highDays).toBe(4)
     expect(a.dropsAfterHigh).toBe(4)
     expect(a.dropRate).toBe(100)
@@ -46,8 +46,8 @@ describe('computeLeadLag', () => {
     expect(a.dropCI!.upper).toBe(100)
     expect(a.dropDays).toBe(6)
     expect(a.riseDays).toBe(5)
-    expect(a.avgScoreBeforeDrop).toBeCloseTo(8, 12)
-    expect(a.avgScoreBeforeRise).toBeCloseTo(4.4, 12)
+    expect(a.avgScoreBeforeDrop).toBeCloseTo(40, 12)
+    expect(a.avgScoreBeforeRise).toBeCloseTo(22, 12)
     expect(a.rhoN).toBe(11)
     expect(a.rho).not.toBeNull()
     expect(a.rho!).toBeLessThan(0) // high scores sat on the falling stretch
@@ -57,8 +57,8 @@ describe('computeLeadLag', () => {
     const b = computeLeadLag(series, 1, 5).find(
       (row) => row.institutionId === 'bank-b',
     )!
-    // Eight 2s and three 9s: the 80th percentile (index 8 of 11) is 9, above WATCH.
-    expect(b.threshold).toBe(9)
+    // Eight 10s and three 45s: the 80th percentile (index 8 of 11) is 45, above WATCH.
+    expect(b.threshold).toBe(45)
     expect(b.threshold).toBeGreaterThan(WATCH)
     expect(b.highDays).toBe(3) // the first three rows are 9 and the price rose after each
     expect(b.dropsAfterHigh).toBe(0)
@@ -72,9 +72,9 @@ describe('computeLeadLag', () => {
 
   it('treats a price change of exactly zero as neither drop nor rise', () => {
     const flat: SeriesPoint[] = [
-      { date: '2026-06-01', score: 9, price: 10, changePct: null },
-      { date: '2026-06-02', score: 9, price: 10, changePct: 0 },
-      { date: '2026-06-03', score: 9, price: 9, changePct: -10 },
+      { date: '2026-06-01', score: 45, price: 10, changePct: null },
+      { date: '2026-06-02', score: 45, price: 10, changePct: 0 },
+      { date: '2026-06-03', score: 45, price: 9, changePct: -10 },
       { date: '2026-06-04', score: 0, price: 9, changePct: 0 },
       { date: '2026-06-05', score: 0, price: 11, changePct: 22 },
     ]
@@ -101,7 +101,7 @@ describe('buildChartSeries', () => {
     const points = buildChartSeries(series.get('bank-a')!)
     expect(points).toHaveLength(12)
     expect(points[0]).toEqual({ date: '2026-06-01', score: 0, price: 100 })
-    expect(points[4]).toEqual({ date: '2026-06-05', score: 9.5, price: 98 })
+    expect(points[4]).toEqual({ date: '2026-06-05', score: 47.5, price: 98 })
     expect(typeof points[11].price).toBe('number')
   })
 

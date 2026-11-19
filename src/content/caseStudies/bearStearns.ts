@@ -20,7 +20,7 @@ const timeline: readonly TimelineEvent[] = [
     category: 'news_sentiment',
     severity: 'medium',
     stockPrice: '~$120',
-    score: 2.1,
+    score: 8.5,
   },
   {
     date: '2007-10-03',
@@ -29,7 +29,7 @@ const timeline: readonly TimelineEvent[] = [
       'Reuters reports Bear Stearns cutting 310 mortgage unit positions.',
     category: 'news_sentiment',
     severity: 'low',
-    score: 2.6,
+    score: 10,
   },
   {
     date: '2007-10-05',
@@ -38,7 +38,7 @@ const timeline: readonly TimelineEvent[] = [
       "Federal prosecutors begin investigating Bear Stearns' collapsed internal hedge funds.",
     category: 'regulatory_signal',
     severity: 'medium',
-    score: 3.0,
+    score: 12,
   },
   {
     date: '2007-12-20',
@@ -47,7 +47,7 @@ const timeline: readonly TimelineEvent[] = [
     category: 'stock_drop',
     severity: 'high',
     stockPrice: '~$91',
-    score: 5.4,
+    score: 22.5,
   },
   {
     date: '2008-01-08',
@@ -57,7 +57,7 @@ const timeline: readonly TimelineEvent[] = [
     category: 'executive_departure',
     severity: 'high',
     stockPrice: '~$71',
-    score: 6.5,
+    score: 30,
   },
   {
     date: '2008-03-10',
@@ -66,7 +66,7 @@ const timeline: readonly TimelineEvent[] = [
       'Internal liquidity falls sharply as prime brokerage clients begin withdrawing en masse.',
     category: 'client_withdrawal',
     severity: 'critical',
-    score: 9.8,
+    score: 45,
   },
   {
     date: '2008-03-12',
@@ -76,7 +76,7 @@ const timeline: readonly TimelineEvent[] = [
     category: 'liquidity_warning',
     severity: 'high',
     stockPrice: '~$61',
-    score: 14.3,
+    score: 58,
   },
   {
     date: '2008-03-13',
@@ -85,7 +85,7 @@ const timeline: readonly TimelineEvent[] = [
       'Reuters reports counterparties refusing to trade. Banks suspend Treasury trading with Bear.',
     category: 'counterparty_action',
     severity: 'critical',
-    score: 22.0,
+    score: 70,
   },
   {
     date: '2008-03-13',
@@ -94,7 +94,7 @@ const timeline: readonly TimelineEvent[] = [
       'Cost of insuring Bear Stearns debt surges, signaling extreme default risk.',
     category: 'cds_spike',
     severity: 'critical',
-    score: 24.0,
+    score: 78,
   },
   {
     date: '2008-03-14',
@@ -104,7 +104,7 @@ const timeline: readonly TimelineEvent[] = [
     category: 'liquidity_warning',
     severity: 'critical',
     stockPrice: '~$30',
-    score: 30.0,
+    score: 88,
   },
   {
     date: '2008-03-14',
@@ -114,7 +114,7 @@ const timeline: readonly TimelineEvent[] = [
     category: 'stock_drop',
     severity: 'critical',
     stockPrice: '~$30',
-    score: 31.5,
+    score: 93,
   },
   {
     date: '2008-03-14',
@@ -123,7 +123,7 @@ const timeline: readonly TimelineEvent[] = [
       "Standard & Poor's cuts Bear credit rating to near-junk status.",
     category: 'credit_downgrade',
     severity: 'critical',
-    score: 32.8,
+    score: 95.5,
   },
   {
     date: '2008-03-16',
@@ -133,7 +133,7 @@ const timeline: readonly TimelineEvent[] = [
     category: 'regulatory_signal',
     severity: 'critical',
     stockPrice: '~$2',
-    score: 34.0,
+    score: 98,
   },
   {
     date: '2008-03-17',
@@ -143,7 +143,7 @@ const timeline: readonly TimelineEvent[] = [
     category: 'news_sentiment',
     severity: 'critical',
     stockPrice: '~$5',
-    score: 34.0,
+    score: 98,
   },
 ]
 

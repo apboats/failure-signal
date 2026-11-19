@@ -8,8 +8,8 @@ describe('scoreDomain', () => {
     expect(scoreDomain[1](0)).toBe(SEVERE)
     expect(scoreDomain[1](6.4)).toBe(SEVERE)
     expect(scoreDomain[1](20)).toBe(SEVERE)
-    expect(scoreDomain[1](33.5)).toBe(Math.ceil(33.5 * 1.2))
-    expect(scoreDomain[1](33.5)).not.toBe(100)
+    expect(scoreDomain[1](90)).toBe(Math.ceil(90 * 1.2))
+    expect(scoreDomain[1](90)).not.toBe(100)
   })
 })
 

@@ -17,13 +17,23 @@ describe('thresholds parity', () => {
   })
 
   it('both modules export the same names with the same values', () => {
-    expect({ ...mirror }).toEqual({ ...shared })
+    const comparable = (mod: Record<string, unknown>) =>
+      Object.fromEntries(
+        Object.entries(mod).map(([k, v]) => [
+          k,
+          typeof v === 'function' ? v.toString() : v,
+        ]),
+      )
+    expect(comparable({ ...mirror })).toEqual(comparable({ ...shared }))
     expect(Object.keys(shared).sort()).toEqual([
+      'SCORE_SCALE',
       'SCORE_SPIKE',
       'SEVERE',
       'SHORT_ENTRY',
       'SHORT_EXIT',
       'WATCH',
+      'fromDisplayScore',
+      'toDisplayScore',
     ])
   })
 
@@ -32,5 +42,19 @@ describe('thresholds parity', () => {
     expect(shared.WATCH).toBeLessThan(shared.SHORT_ENTRY)
     expect(shared.SHORT_ENTRY).toBeLessThan(shared.SEVERE)
     expect(shared.SCORE_SPIKE).toBeGreaterThan(0)
+  })
+
+  it('the display transform is monotone, bounded and invertible', () => {
+    expect(shared.toDisplayScore(0)).toBe(0)
+    expect(shared.toDisplayScore(-3)).toBe(0)
+    expect(shared.toDisplayScore(8)).toBeCloseTo(39.35, 2)
+    expect(shared.toDisplayScore(15)).toBeCloseTo(60.84, 2)
+    expect(shared.toDisplayScore(33.5)).toBeCloseTo(87.68, 2)
+    expect(shared.toDisplayScore(1000)).toBeLessThanOrEqual(100)
+    for (const raw of [0.5, 5, 8, 15, 25, 33.5, 54])
+      expect(shared.fromDisplayScore(shared.toDisplayScore(raw))).toBeCloseTo(
+        raw,
+        6,
+      )
   })
 })

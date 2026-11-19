@@ -156,8 +156,8 @@ describe('Badge', () => {
 
 describe('ScoreValue', () => {
   it('renders one decimal tinted by band and a dash for null', () => {
-    expect(renderToStaticMarkup(<ScoreValue score={12} />)).toMatch(
-      /text-risk-3[^>]*>12\.0/,
+    expect(renderToStaticMarkup(<ScoreValue score={48} />)).toMatch(
+      /text-risk-3[^>]*>48\.0/,
     )
     const missing = renderToStaticMarkup(<ScoreValue score={null} withLevel />)
     expect(missing).toMatch(/text-muted[^>]*>—/)

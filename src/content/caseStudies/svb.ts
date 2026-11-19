@@ -21,7 +21,7 @@ const timeline: readonly TimelineEvent[] = [
     category: 'liquidity_warning',
     severity: 'low',
     stockPrice: '~$590',
-    score: 3.8,
+    score: 15,
   },
   {
     date: '2022-05-19',
@@ -31,7 +31,7 @@ const timeline: readonly TimelineEvent[] = [
     category: 'executive_departure',
     severity: 'low',
     stockPrice: '~$470',
-    score: 4.8,
+    score: 20,
   },
   {
     date: '2022-06-15',
@@ -41,7 +41,7 @@ const timeline: readonly TimelineEvent[] = [
     category: 'liquidity_warning',
     severity: 'medium',
     stockPrice: '~$420',
-    score: 6.2,
+    score: 28,
   },
   {
     date: '2022-07-21',
@@ -51,7 +51,7 @@ const timeline: readonly TimelineEvent[] = [
     category: 'client_withdrawal',
     severity: 'medium',
     stockPrice: '~$395',
-    score: 7.4,
+    score: 34,
   },
   {
     date: '2022-10-20',
@@ -61,7 +61,7 @@ const timeline: readonly TimelineEvent[] = [
     category: 'liquidity_warning',
     severity: 'high',
     stockPrice: '~$280',
-    score: 8.7,
+    score: 42,
   },
   {
     date: '2022-11-01',
@@ -72,7 +72,7 @@ const timeline: readonly TimelineEvent[] = [
     category: 'news_sentiment',
     severity: 'medium',
     stockPrice: '~$250',
-    score: 10.5,
+    score: 48,
   },
   {
     date: '2023-01-04',
@@ -82,7 +82,7 @@ const timeline: readonly TimelineEvent[] = [
     category: 'counterparty_action',
     severity: 'medium',
     stockPrice: '~$245',
-    score: 12.2,
+    score: 52,
   },
   {
     date: '2023-01-19',
@@ -92,7 +92,7 @@ const timeline: readonly TimelineEvent[] = [
     category: 'liquidity_warning',
     severity: 'high',
     stockPrice: '~$270',
-    score: 13.3,
+    score: 55,
   },
   {
     date: '2023-01-26',
@@ -102,7 +102,7 @@ const timeline: readonly TimelineEvent[] = [
     category: 'executive_departure',
     severity: 'medium',
     stockPrice: '~$280',
-    score: 14.1,
+    score: 58,
   },
   {
     date: '2023-02-01',
@@ -112,7 +112,7 @@ const timeline: readonly TimelineEvent[] = [
       "Peter Thiel's Founders Fund and other VC firms quietly begin advising portfolio companies to move money out of SVB. Not yet public but deposit outflows accelerate.",
     category: 'client_withdrawal',
     severity: 'high',
-    score: 16.0,
+    score: 62,
   },
   {
     date: '2023-03-01',
@@ -122,7 +122,7 @@ const timeline: readonly TimelineEvent[] = [
     category: 'counterparty_action',
     severity: 'high',
     stockPrice: '~$284',
-    score: 19.0,
+    score: 68,
   },
   {
     date: '2023-03-08',
@@ -132,7 +132,7 @@ const timeline: readonly TimelineEvent[] = [
     category: 'counterparty_action',
     severity: 'critical',
     stockPrice: '~$267',
-    score: 21.0,
+    score: 72,
   },
   {
     date: '2023-03-08',
@@ -142,7 +142,7 @@ const timeline: readonly TimelineEvent[] = [
     category: 'liquidity_warning',
     severity: 'critical',
     stockPrice: '~$248 AH',
-    score: 29.0,
+    score: 88,
   },
   {
     date: '2023-03-09',
@@ -152,7 +152,7 @@ const timeline: readonly TimelineEvent[] = [
     category: 'stock_drop',
     severity: 'critical',
     stockPrice: '$106',
-    score: 31.0,
+    score: 93,
   },
   {
     date: '2023-03-09',
@@ -161,7 +161,7 @@ const timeline: readonly TimelineEvent[] = [
       'Customers attempt to withdraw $42B — roughly 25% of total deposits — in a single day. A 21st-century digital bank run amplified by Twitter and VC group chats.',
     category: 'client_withdrawal',
     severity: 'critical',
-    score: 32.0,
+    score: 95,
   },
   {
     date: '2023-03-09',
@@ -170,7 +170,7 @@ const timeline: readonly TimelineEvent[] = [
       "Moody's cuts SVB Financial Group from A3 to Baa1 — a three-notch downgrade — and places on review for further downgrade.",
     category: 'credit_downgrade',
     severity: 'critical',
-    score: 33.0,
+    score: 96,
   },
   {
     date: '2023-03-10',
@@ -180,7 +180,7 @@ const timeline: readonly TimelineEvent[] = [
     category: 'stock_drop',
     severity: 'critical',
     stockPrice: '~$35 (halted)',
-    score: 34.0,
+    score: 97,
   },
   {
     date: '2023-03-10',
@@ -189,7 +189,7 @@ const timeline: readonly TimelineEvent[] = [
       'California DFPI closes Silicon Valley Bank at 11:30 AM ET. FDIC appointed as receiver. Second-largest bank failure in US history after Washington Mutual (2008).',
     category: 'regulatory_signal',
     severity: 'critical',
-    score: 35.0,
+    score: 100,
   },
   {
     date: '2023-03-12',
@@ -198,7 +198,7 @@ const timeline: readonly TimelineEvent[] = [
       'Treasury, Fed, and FDIC guarantee all SVB and Signature Bank depositors. Fed launches Bank Term Funding Program (BTFP). Signature Bank also closed by NY regulators.',
     category: 'regulatory_signal',
     severity: 'critical',
-    score: 35.0,
+    score: 100,
   },
   {
     date: '2023-03-13',
@@ -207,7 +207,7 @@ const timeline: readonly TimelineEvent[] = [
       'First Republic Bank stock drops ~60%. Regional bank index falls ~12%. PacWest, Western Alliance, Zions all hammered. Full contagion panic.',
     category: 'counterparty_action',
     severity: 'critical',
-    score: 35.0,
+    score: 100,
   },
   {
     date: '2023-04-28',
@@ -216,7 +216,7 @@ const timeline: readonly TimelineEvent[] = [
       'First Republic Bank, weakened by SVB contagion, seized by regulators and sold to JPMorgan Chase. Third major bank failure in two months.',
     category: 'counterparty_action',
     severity: 'critical',
-    score: 35.0,
+    score: 100,
   },
 ]
 

@@ -105,7 +105,7 @@ function render(
 
 const baseValues: AlertFormValues = {
   institutionId: '',
-  threshold: 8,
+  threshold: 40,
   categories: [],
 }
 
@@ -133,7 +133,7 @@ describe('AlertFormView', () => {
     expect(range).toContain(`max="${SEVERE}"`)
     expect(range).toContain('step="1"')
     // The threshold reads as an index, never a percentage.
-    expect(html).toContain('8.0')
+    expect(html).toContain('40.0')
     expect(html).not.toContain('%')
     expect(html).toContain('Elevated')
   })
@@ -181,7 +181,7 @@ describe('AlertFormView', () => {
     const html = render(
       <AlertFormView
         {...viewProps}
-        values={{ ...baseValues, institutionId: 'b', threshold: 12 }}
+        values={{ ...baseValues, institutionId: 'b', threshold: 48 }}
         error={error}
       />,
     )
@@ -190,7 +190,7 @@ describe('AlertFormView', () => {
       'new row violates row-level security policy for table &quot;alert_configs&quot;',
     )
     expect(html).toMatch(/<option[^>]*value="b"[^>]*selected/)
-    expect(html).toMatch(/<input type="range"[^>]*value="12"/)
+    expect(html).toMatch(/<input type="range"[^>]*value="48"/)
   })
 
   it('offers no inactive banks except a prefilled one', () => {

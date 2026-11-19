@@ -3,16 +3,19 @@
  * (institution_id, computed_at) with computed_at floored to the hour so a
  * rerun inside the same hour overwrites instead of appending.
  *
- * Formula (unchanged; the rescale in F019 is deferred to an owner decision):
- *   score = min(100, sum over categories of
+ * Formula:
+ *   raw = min(100, sum over categories of
  *             weight[category] x min(100, sum over signals of
  *               SEVERITY_VALUES[severity] x exp(-DECAY_LAMBDA x days_ago)))
- * over the last 30 days of risk_signals. `days_ago` is measured from the
- * run's floored hour so the stored row is as-of its own computed_at.
+ * over the last 30 days of risk_signals, and the stored score is the display
+ * scale toDisplayScore(raw) = 100 x (1 - exp(-raw / SCORE_SCALE)) from
+ * ../_shared/thresholds.ts (raw is kept in score_components._raw). `days_ago`
+ * is measured from the run's floored hour so the stored row is as-of its own
+ * computed_at.
  *
  * Reads are bounded and batched: one risk_scores read for previous scores,
  * one risk_signals read for the 30-day window, one upsert for every row.
- * Peer contagion (a >15 point one-run jump raises a medium/high
+ * Peer contagion (a >CONTAGION_DELTA point one-run jump on the display scale raises a medium/high
  * peer_contagion signal for same-sector banks, at most one per bank per day)
  * is decided from the same in-memory signal set and inserted in one call.
  */
@@ -20,6 +23,7 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { json, requireServiceRole } from '../_shared/auth.ts'
 import { requireEnv } from '../_shared/env.ts'
+import { toDisplayScore } from '../_shared/thresholds.ts'
 
 const DECAY_LAMBDA = 0.1
 
@@ -33,9 +37,9 @@ const SEVERITY_VALUES: Record<string, number> = {
 /** Applied, with a warning, to a category that has no global scoring_weights row. */
 const DEFAULT_WEIGHT = 0.05
 const SIGNAL_WINDOW_DAYS = 30
-/** A one-run jump above this many points raises peer_contagion for the sector. */
-const CONTAGION_DELTA = 15
-const CONTAGION_HIGH_DELTA = 30
+/** A one-run jump above this many display-scale points raises peer_contagion for the sector. */
+const CONTAGION_DELTA = 30
+const CONTAGION_HIGH_DELTA = 50
 
 const HOUR_MS = 60 * 60 * 1000
 const DAY_MS = 24 * HOUR_MS
@@ -69,7 +73,10 @@ interface ScoredInstitution {
   institution_id: string
   name: string
   sector: string | null
+  /** Display score (0-100) stored in risk_scores.score. */
   score: number
+  /** Raw weighted composite before the display transform. */
+  rawScore: number
   components: Record<string, number>
   weightsUsed: Record<string, number>
   signalCount: number
@@ -222,7 +229,8 @@ Deno.serve(async (req) => {
         institution_id: inst.id,
         name: inst.name,
         sector: inst.sector,
-        score: Math.min(compositeScore, 100),
+        score: toDisplayScore(Math.min(compositeScore, 100)),
+        rawScore: Math.min(compositeScore, 100),
         components,
         weightsUsed,
         signalCount: signals.length,
@@ -293,7 +301,11 @@ Deno.serve(async (req) => {
       // `_weights` records the weight applied per category so the row is
       // self-describing; readers list categories with componentEntries(),
       // which skips non-numeric values.
-      score_components: { ...r.components, _weights: r.weightsUsed },
+      score_components: {
+        ...r.components,
+        _weights: r.weightsUsed,
+        _raw: Number(r.rawScore.toFixed(4)),
+      },
       signal_count: r.signalCount,
       computed_at: runAtIso,
     }))
