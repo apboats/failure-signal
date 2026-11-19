@@ -8,6 +8,11 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    env:
+      # src/lib/supabase.ts refuses to load without these. CI never talks to
+      # the real project, so placeholders keep the test and build steps honest.
+      VITE_SUPABASE_URL: http://127.0.0.1:54321
+      VITE_SUPABASE_ANON_KEY: ci-placeholder-anon-key
     steps:
       - uses: actions/checkout@v5
 
