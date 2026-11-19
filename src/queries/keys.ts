@@ -12,6 +12,9 @@ const idSet = (ids: readonly string[]) => [...ids].sort().join(',')
  */
 export const queryKeys = {
   institutions: ['institutions'] as const,
+  candidates: ['institutions', 'candidates'] as const,
+  mentions: (ids: readonly string[]) =>
+    ['institutions', 'mentions', idSet(ids)] as const,
   latestScores: ['latest-scores'] as const,
   scoreHistory: (institutionId: string, days: number | 'all') =>
     ['score-history', institutionId, days] as const,

@@ -2,7 +2,8 @@ import { Activity, X } from 'lucide-react'
 import { Fragment, useEffect, useRef } from 'react'
 import { NavLink } from 'react-router-dom'
 import { navRoutes } from '@/app/routes'
-import { cx } from '@/components/ui'
+import { Badge, cx } from '@/components/ui'
+import { useCandidates } from '@/queries/useReview'
 
 export interface SidebarProps {
   /** True while the mobile drawer is open; focus moves to the close button. */
@@ -16,6 +17,10 @@ const LINK =
 /** Brand row plus the inNav routes from the route table, with a divider before the reference group. */
 export function Sidebar({ drawerOpen, onClose }: SidebarProps) {
   const closeButton = useRef<HTMLButtonElement>(null)
+  const candidates = useCandidates()
+  const pendingCount = (candidates.data ?? []).filter(
+    (row) => row.review_status === 'pending',
+  ).length
 
   useEffect(() => {
     if (drawerOpen) closeButton.current?.focus()
@@ -68,6 +73,12 @@ export function Sidebar({ drawerOpen, onClose }: SidebarProps) {
               >
                 {Icon ? <Icon aria-hidden="true" className="size-5" /> : null}
                 {route.label}
+                {route.path === '/review' && pendingCount > 0 ? (
+                  <Badge tone="sev-medium" size="sm" className="ml-auto">
+                    <span className="sr-only">Pending: </span>
+                    {pendingCount}
+                  </Badge>
+                ) : null}
               </NavLink>
             </Fragment>
           )

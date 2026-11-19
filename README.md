@@ -30,14 +30,15 @@ Path aliases: `@/` is `src/`, `@shared/` is `shared/`.
 
 ## Routes
 
-| Route              | Page        | Purpose                                                                                                                                         |
-| ------------------ | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/`                | Watchlist   | All active banks: score, 24h/7d deltas, 30-day sparkline, price, last-scored time; stat tiles, movers, latest signals, pipeline freshness pill. |
-| `/institution/:id` | Institution | Score history, score components, signals (filterable, true totals), news.                                                                       |
-| `/trading`         | Trading     | Trading signals (open/closed/all) and the positions book with realised and unrealised P&L. `?tab=positions`.                                    |
-| `/validation`      | Validation  | Event study (does a score threshold crossing lead price?) and lead-lag per bank over the daily snapshots. `?tab=leadlag`.                       |
-| `/alerts`          | Alerts      | Threshold alert configs and the alert_history log. In-app only; no email is sent.                                                               |
-| `/playbook`        | Playbook    | SVB and Bear Stearns case studies replayed against the thresholds.                                                                              |
+| Route              | Page        | Purpose                                                                                                                                                                                                |
+| ------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/`                | Watchlist   | All active banks: score, 24h/7d deltas, 30-day sparkline, price, last-scored time; stat tiles, movers, latest signals, pipeline freshness pill.                                                        |
+| `/institution/:id` | Institution | Score history, score components, signals (filterable, true totals), news.                                                                                                                              |
+| `/trading`         | Trading     | Trading signals (open/closed/all) and the positions book with realised and unrealised P&L. `?tab=positions`.                                                                                           |
+| `/validation`      | Validation  | Event study (does a score threshold crossing lead price?) and lead-lag per bank over the daily snapshots. `?tab=leadlag`.                                                                              |
+| `/alerts`          | Alerts      | Threshold alert configs and the alert_history log. In-app only; no email is sent.                                                                                                                      |
+| `/review`          | Review      | Companies the news pipeline discovered, with an estimated likelihood of being a US bank (SEC industry code, exchange, headquarters). Track adds one to the Watchlist and scoring; Ignore keeps it off. |
+| `/playbook`        | Playbook    | SVB and Bear Stearns case studies replayed against the thresholds.                                                                                                                                     |
 
 Old paths redirect: `/signals` and `/portfolio` go to `/trading`, `/backtest` and `/correlation` to
 `/validation`, `/history` to `/playbook`. Unknown paths render Not found.
@@ -49,21 +50,22 @@ the service-role key). Each handler starts with the `requireServiceRole` guard f
 `supabase/functions/_shared/auth.ts`; the guard is fail-open until the `FN_AUTH_REQUIRED=true` secret is
 set, so deploy order cannot stop the pipeline.
 
-| Group         | Function                      | What it does                                                                                                                                           |
-| ------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Ingest        | `fetch-news`                  | GNews (primary) and optional NewsAPI queries per bank and broad sector queries; inserts `news_articles` (upsert on url once `ops/06` is applied).      |
-| Ingest        | `fetch-market-data`           | Finnhub quotes during US market hours; `stock_drop` signals.                                                                                           |
-| Ingest        | `fetch-sec-filings`           | EDGAR 10-K/10-Q by CIK, LLM extraction of equity, unrealised losses, deposits; `liquidity_warning` / `client_withdrawal` signals.                      |
-| Ingest        | `fetch-insider-trades`        | EDGAR Form 4 by CIK; `insider_selling` signals.                                                                                                        |
-| Ingest        | `fetch-lawmaker-trades`       | Congressional trade disclosures; `lawmaker_selling` signals. The upstream feed is unreliable (see deferred items).                                     |
-| Ingest        | `fetch-social-sentiment`      | Social panic signals for the ten highest-scoring banks.                                                                                                |
-| Process       | `process-articles`            | Drains `news_articles` where `analyzed_at is null` (15 per run) through Claude: relevance, sentiment, institution match, `risk_signals`.               |
-| Process       | `analyze-news`                | **Removed.** Superseded by `process-articles`; the source directory is deleted and `config.toml` marks it `enabled = false`. Delete the deployed copy. |
-| Score / alert | `compute-risk-score`          | Hourly: 30-day signals x severity x `scoring_weights`, exponential decay, one `risk_scores` row per bank per hour.                                     |
-| Score / alert | `check-alerts`                | Hourly: compares latest scores with `alert_configs`, writes `alert_history`.                                                                           |
-| Score / alert | `daily-snapshot`              | 22:00 UTC: one `daily_snapshots` row per bank (score + close price), XLF/SPY `benchmark_snapshots`, trading-signal generation.                         |
-| Backfill      | `backfill-benchmarks`         | Manual: refills 3 months of XLF/SPY weekday rows. Run after `ops/01`.                                                                                  |
-| Backfill      | `backfill-institution-prices` | Manual: refills missing weekday prices on `daily_snapshots`.                                                                                           |
+| Group         | Function                      | What it does                                                                                                                                                                   |
+| ------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Ingest        | `fetch-news`                  | GNews (primary) and optional NewsAPI queries per bank and broad sector queries; inserts `news_articles` (upsert on url once `ops/06` is applied).                              |
+| Ingest        | `fetch-market-data`           | Finnhub quotes during US market hours; `stock_drop` signals.                                                                                                                   |
+| Ingest        | `fetch-sec-filings`           | EDGAR 10-K/10-Q by CIK, LLM extraction of equity, unrealised losses, deposits; `liquidity_warning` / `client_withdrawal` signals.                                              |
+| Ingest        | `fetch-insider-trades`        | EDGAR Form 4 by CIK; `insider_selling` signals.                                                                                                                                |
+| Ingest        | `fetch-lawmaker-trades`       | Congressional trade disclosures; `lawmaker_selling` signals. The upstream feed is unreliable (see deferred items).                                                             |
+| Ingest        | `fetch-social-sentiment`      | Social panic signals for the ten highest-scoring banks.                                                                                                                        |
+| Process       | `process-articles`            | Drains `news_articles` where `analyzed_at is null` (15 per run) through Claude: relevance, sentiment, institution match, `risk_signals`.                                       |
+| Process       | `analyze-news`                | **Removed.** Superseded by `process-articles`; the source directory is deleted and `config.toml` marks it `enabled = false`. Delete the deployed copy.                         |
+| Score / alert | `compute-risk-score`          | Hourly: 30-day signals x severity x `scoring_weights`, exponential decay, one `risk_scores` row per bank per hour.                                                             |
+| Score / alert | `check-alerts`                | Hourly: compares latest scores with `alert_configs`, writes `alert_history`.                                                                                                   |
+| Score / alert | `classify-pending`            | Hourly: estimates how likely each discovered institution is to be a US bank from `sec_company_tickers` and its EDGAR record; fills `cik` when found. Never activates anything. |
+| Score / alert | `daily-snapshot`              | 22:00 UTC: one `daily_snapshots` row per bank (score + close price), XLF/SPY `benchmark_snapshots`, trading-signal generation.                                                 |
+| Backfill      | `backfill-benchmarks`         | Manual: refills 3 months of XLF/SPY weekday rows. Run after `ops/01`.                                                                                                          |
+| Backfill      | `backfill-institution-prices` | Manual: refills missing weekday prices on `daily_snapshots`.                                                                                                                   |
 
 ## Data model
 
@@ -94,6 +96,16 @@ weights; live maximum 33.5 since April 2026), so the saturating transform spread
 stored history on 2026-11-18. Thresholds live in `shared/thresholds.ts` (mirrored in
 `supabase/functions/_shared/thresholds.ts`, parity-tested): SHORT_EXIT 25, WATCH 40, SHORT_ENTRY 60,
 SEVERE 80, SCORE_SPIKE 15, with the bands Low < 25, Guarded < 40, Elevated < 60, High < 80, Critical >= 80.
+
+### New institutions
+
+`process-articles` creates a row for any company the news model names that matches nothing tracked. Since
+2026-11-19 those rows start inactive with `review_status = 'pending'` (migration `00006`), so nothing is
+scored or shown until it is approved on the Review page (or with `select review_institution(id, 'track')`).
+Hand-seeded banks have `discovered_at` null and cannot be changed from the browser. `classify-pending`
+reads tickers from `sec_company_tickers` (`00007`), a local copy because www.sec.gov rate-limits
+Supabase's servers; refresh it monthly with
+`SEC_EDGAR_EMAIL=you@example.com node --experimental-strip-types scripts/refresh-sec-tickers.mjs`.
 
 ## Secrets
 
@@ -140,6 +152,7 @@ gone. All times UTC.
 | `fetch-insider-trades`   | `0 10 * * *`                           | `fetch-insider-trades`   |
 | `fetch-social-sentiment` | `0 */2 * * *`                          | `fetch-social-sentiment` |
 | `fetch-sec-filings`      | `0 12 * * 1` (Mondays)                 | `fetch-sec-filings`      |
+| `classify-pending`       | `40 * * * *` (hourly, `00006`)         | `classify-pending`       |
 | `fetch-lawmaker-trades`  | `0 11 * * *`                           | `fetch-lawmaker-trades`  |
 | `daily-snapshot`         | `0 22 * * *`                           | `daily-snapshot`         |
 

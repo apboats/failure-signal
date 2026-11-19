@@ -392,6 +392,9 @@ verify_jwt = true
 [functions.check-alerts]
 verify_jwt = true
 
+[functions.classify-pending]
+verify_jwt = true
+
 [functions.compute-risk-score]
 verify_jwt = true
 

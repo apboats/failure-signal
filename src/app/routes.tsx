@@ -1,6 +1,7 @@
 import {
   Bell,
   BookOpen,
+  ClipboardCheck,
   FlaskConical,
   LayoutDashboard,
   TrendingDown,
@@ -99,6 +100,18 @@ const pages: AppRoute[] = [
     element: lazyPage(
       () => import('@/pages/Alerts'),
       (m) => m.Alerts,
+    ),
+  },
+  {
+    path: '/review',
+    title: 'Review',
+    label: 'Review',
+    icon: ClipboardCheck,
+    inNav: true,
+    group: 'main',
+    element: lazyPage(
+      () => import('@/pages/Review'),
+      (m) => m.Review,
     ),
   },
   {

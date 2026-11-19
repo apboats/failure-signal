@@ -47,6 +47,11 @@ const institution = (
   cik: null,
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
+  discovered_at: null,
+  review_status: null,
+  reviewed_at: null,
+  us_bank_probability: null,
+  review_evidence: null,
 })
 
 const score = (

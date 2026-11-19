@@ -92,6 +92,29 @@ type InstitutionRow = {
   cik: string | null
   created_at: string
   updated_at: string
+  /** Set when the news pipeline created the row (migration 00006); null for hand-seeded banks. */
+  discovered_at: string | null
+  review_status: ReviewStatus | null
+  reviewed_at: string | null
+  /** 0..1 estimate from classify-pending; null until it has run. */
+  us_bank_probability: number | null
+  review_evidence: ReviewEvidence | null
+}
+
+export type ReviewStatus = 'pending' | 'approved' | 'ignored'
+export type ReviewDecision = 'track' | 'ignore' | 'pending'
+
+/** What classify-pending based its estimate on. */
+export type ReviewEvidence = {
+  checked_at?: string
+  matched_by?: 'ticker' | 'name' | null
+  sec_name?: string | null
+  cik?: string | null
+  sic?: string | null
+  sic_description?: string | null
+  exchanges?: string[]
+  state_or_country?: string | null
+  reasons?: string[]
 }
 
 type NewsArticleRow = {
@@ -406,7 +429,16 @@ export type Database = {
         Relationships: []
       }
     }
-    Functions: { [_ in never]: never }
+    Functions: {
+      review_institution: {
+        Args: { p_id: string; p_decision: ReviewDecision }
+        Returns: {
+          id: string
+          is_active: boolean
+          review_status: ReviewStatus
+        }[]
+      }
+    }
     Enums: {
       signal_category: SignalCategory
       signal_severity: SignalSeverity
