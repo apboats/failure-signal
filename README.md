@@ -240,6 +240,8 @@ list`; if `00001`/`00002` are not recorded as applied, `supabase migration repai
    - `ops/05_purge_risk_scores_initial.sql`, then `vacuum (analyze) risk_scores;` on its own.
    - `ops/06_dedupe_news_urls.sql` (creates the `news_articles_url_key` index).
    - `ops/08_rescale_scores.sql`, only after the rescaled `compute-risk-score` is deployed (idempotent via
+   - `ops/09_contagion_dedupe_tickers.sql` (applied 2026-11-19): removes the non-funding peer_contagion rows and
+     same-event duplicate signals (archived in `risk_signals_archive`) and fixes the BNY/FLG tickers.
      `public.ops_applied`).
    - CIK backfill (`ops/07_backfill_cik.md`): `SEC_EDGAR_EMAIL=you@example.com node scripts/backfill-cik.mjs --apply`
      (dry run without `--apply`). Applied on 2026-11-19; re-run after adding banks.

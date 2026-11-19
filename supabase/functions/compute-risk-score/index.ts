@@ -15,7 +15,8 @@
  *
  * Reads are bounded and batched: one risk_scores read for previous scores,
  * one risk_signals read for the 30-day window, one upsert for every row.
- * Peer contagion (a >CONTAGION_DELTA point one-run jump on the display scale raises a medium/high
+ * Peer contagion (a >CONTAGION_DELTA point one-run jump on the display scale,
+ * at least half of it from funding-type categories per _shared/signalRules.ts, raises a medium/high
  * peer_contagion signal for same-sector banks, at most one per bank per day)
  * is decided from the same in-memory signal set and inserted in one call.
  */
@@ -23,7 +24,8 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { json, requireServiceRole } from '../_shared/auth.ts'
 import { requireEnv } from '../_shared/env.ts'
-import { toDisplayScore } from '../_shared/thresholds.ts'
+import { isFundingDriven } from '../_shared/signalRules.ts'
+import { fromDisplayScore, toDisplayScore } from '../_shared/thresholds.ts'
 
 const DECAY_LAMBDA = 0.1
 
@@ -66,7 +68,14 @@ interface SignalRow {
 interface PrevScoreRow {
   institution_id: string
   score: number | string
+  score_components: Record<string, unknown> | null
   computed_at: string
+}
+
+interface PrevScore {
+  score: number
+  raw: number
+  components: Record<string, unknown> | null
 }
 
 interface ScoredInstitution {
@@ -156,7 +165,7 @@ Deno.serve(async (req) => {
     // Previous score per bank: one bounded read, newest first, strictly before this run.
     const { data: prevRows, error: prevError } = await supabase
       .from('risk_scores')
-      .select('institution_id, score, computed_at')
+      .select('institution_id, score, score_components, computed_at')
       .gte(
         'computed_at',
         new Date(runAtMs - PREV_SCORE_WINDOW_MS).toISOString(),
@@ -165,11 +174,16 @@ Deno.serve(async (req) => {
       .order('computed_at', { ascending: false })
       .limit(ROW_CAP)
     if (prevError) throw prevError
-    const prevScores = new Map<string, number>()
+    const prevScores = new Map<string, PrevScore>()
     for (const row of (prevRows ?? []) as PrevScoreRow[]) {
-      if (!prevScores.has(row.institution_id)) {
-        prevScores.set(row.institution_id, Number(row.score))
-      }
+      if (prevScores.has(row.institution_id)) continue
+      const score = Number(row.score)
+      const storedRaw = Number(row.score_components?._raw)
+      prevScores.set(row.institution_id, {
+        score,
+        raw: Number.isFinite(storedRaw) ? storedRaw : fromDisplayScore(score),
+        components: row.score_components,
+      })
     }
 
     // The 30-day signal window for every bank in one read, grouped in memory.
@@ -242,9 +256,25 @@ Deno.serve(async (req) => {
     const contagionRows: Array<Record<string, unknown>> = []
     const contagionQueued = new Set<string>()
     for (const result of results) {
-      const prevScore = prevScores.get(result.institution_id) ?? 0
+      const prev = prevScores.get(result.institution_id)
+      const prevScore = prev?.score ?? 0
       const scoreDelta = result.score - prevScore
       if (scoreDelta <= CONTAGION_DELTA) continue
+      // Only funding stress spreads between banks; see _shared/signalRules.ts.
+      if (
+        !isFundingDriven({
+          currentRaw: result.rawScore,
+          prevRaw: prev?.raw ?? 0,
+          currentComponents: result.components,
+          prevComponents: prev?.components ?? null,
+          weightFor,
+        })
+      ) {
+        console.log(
+          `[compute-risk-score] ${result.name} jumped +${scoreDelta.toFixed(0)} but not on funding signals; no peer_contagion`,
+        )
+        continue
+      }
 
       const peers = results.filter(
         (r) =>

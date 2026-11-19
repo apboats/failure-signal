@@ -11,7 +11,8 @@
  *      article that a "Citizens" search attached to the wrong bank is
  *      re-linked (or unlinked). New institutions are created only when the
  *      article is relevant (score >= 0.3) and the sector is not insurance.
- *   3. risk_signals insert (only when relevant and linked), then the article
+ *   3. risk_signals insert (only when relevant and linked, minus repeats of
+ *      the same event: _shared/signalRules.ts dedupeSignals), then the article
  *      update that sets analyzed_at. The insert comes first and throws on
  *      error so a lost signal never leaves the article marked analyzed.
  *
@@ -28,6 +29,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { z } from 'npm:zod@4'
+import { DEDUPE_WINDOW_DAYS, dedupeSignals } from '../_shared/signalRules.ts'
 import { json, requireServiceRole } from '../_shared/auth.ts'
 import {
   abortStatus,
@@ -297,7 +299,7 @@ async function processArticle(
   }
 
   if (relevant && institutionId && analysis.signals.length > 0) {
-    const signals = analysis.signals.map((s) => ({
+    const candidates = analysis.signals.map((s) => ({
       institution_id: institutionId,
       news_article_id: article.id,
       category: s.category,
@@ -307,10 +309,31 @@ async function processArticle(
       signal_date: article.published_at || new Date().toISOString(),
       source: article.source,
     }))
-    const { error: signalError } = await supabase
+    // One event reported by many outlets should count once: drop repeats of
+    // an existing same-category signal within DEDUPE_WINDOW_DAYS unless the
+    // severity escalates (see _shared/signalRules.ts).
+    const anchor = Date.parse(candidates[0].signal_date)
+    const windowMs = DEDUPE_WINDOW_DAYS * 24 * 60 * 60 * 1000
+    const { data: nearby, error: nearbyError } = await supabase
       .from('risk_signals')
-      .insert(signals)
-    if (signalError) throw signalError
+      .select('category, severity, signal_date')
+      .eq('institution_id', institutionId)
+      .gte('signal_date', new Date(anchor - windowMs).toISOString())
+      .lte('signal_date', new Date(anchor + windowMs).toISOString())
+      .limit(1000)
+    if (nearbyError) throw nearbyError
+    const signals = dedupeSignals(candidates, nearby ?? [])
+    if (signals.length < candidates.length) {
+      console.log(
+        `[process-articles] article ${article.id}: ${candidates.length - signals.length} of ${candidates.length} signals already recorded for this event`,
+      )
+    }
+    if (signals.length > 0) {
+      const { error: signalError } = await supabase
+        .from('risk_signals')
+        .insert(signals)
+      if (signalError) throw signalError
+    }
   }
 
   const { error: updateError } = await supabase
