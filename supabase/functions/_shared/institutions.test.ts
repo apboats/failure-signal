@@ -359,7 +359,7 @@ describe('findOrCreateInstitution', () => {
     expect(db.inserts).toHaveLength(0)
   })
 
-  it('creates an active row with a normalised ticker and adds it to the index', async () => {
+  it('creates an inactive row with a normalised ticker and adds it to the index', async () => {
     const db = new FakeDb(SEEDED)
     const index = await loadInstitutionIndex(db)
     const id = await findOrCreateInstitution(db, index, {
@@ -373,7 +373,7 @@ describe('findOrCreateInstitution', () => {
         name: 'Example Bancorp',
         ticker: 'EXB',
         sector: 'banking',
-        is_active: true,
+        is_active: false,
       },
     ])
     expect(matchInstitution(index, { ticker: 'EXB' })?.id).toBe('new-1')

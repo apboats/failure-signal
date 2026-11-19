@@ -45,7 +45,8 @@ export interface NewInstitution {
   name: string
   ticker: string | null
   sector: string
-  is_active: true
+  /** Always false: discovered institutions wait for review before they are scored. */
+  is_active: false
 }
 
 export interface DbError {
@@ -356,8 +357,12 @@ export interface DiscoveredInstitution {
 }
 
 /**
- * Returns the id of the matching institution, creating an active row when
- * nothing matches. Returns null for an empty name, for sector 'insurance'
+ * Returns the id of the matching institution, creating an INACTIVE row when
+ * nothing matches. A discovered company is never tracked automatically: its
+ * signals and news attach to the row, but it stays off the Watchlist and out
+ * of scoring until someone sets is_active = true after confirming it is a
+ * US-listed bank. Auto-activation is how non-banks (Upstart, Coinbase,
+ * VanEck, Paytm) got onto the Watchlist before. Returns null for an empty name, for sector 'insurance'
  * (not tracked), and when the insert fails for a reason other than a unique
  * violation. The index is updated in place so the rest of the batch sees the
  * new row.
@@ -384,7 +389,7 @@ export async function findOrCreateInstitution(
     name,
     ticker: normalizeTicker(discovered.ticker),
     sector: discovered.sector || 'banking',
-    is_active: true,
+    is_active: false,
   }
   const { data, error } = await db
     .from('institutions')
@@ -427,7 +432,7 @@ export async function findOrCreateInstitution(
 
   addInstitution(index, data)
   console.log(
-    `[institutions] auto-discovered ${data.name} (${data.ticker ?? 'no ticker'}, ${values.sector})`,
+    `[institutions] discovered (inactive, pending review) ${data.name} (${data.ticker ?? 'no ticker'}, ${values.sector})`,
   )
   return data.id
 }
