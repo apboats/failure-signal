@@ -228,7 +228,8 @@ list`; if `00001`/`00002` are not recorded as applied, `supabase migration repai
    - `ops/06_dedupe_news_urls.sql` (creates the `news_articles_url_key` index).
    - `ops/08_rescale_scores.sql`, only after the rescaled `compute-risk-score` is deployed (idempotent via
      `public.ops_applied`).
-   - `ops/07_backfill_cik.md` whenever convenient; it only enables the EDGAR feeds for more banks.
+   - CIK backfill (`ops/07_backfill_cik.md`): `SEC_EDGAR_EMAIL=you@example.com node scripts/backfill-cik.mjs --apply`
+     (dry run without `--apply`). Applied on 2026-11-19; re-run after adding banks.
 
 Every migration is idempotent and every ops script has a verification query before its `commit`, so a
 failed step can be re-run after fixing the cause.

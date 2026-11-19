@@ -1,3 +1,6 @@
+> Automated: `SEC_EDGAR_EMAIL=you@example.com node scripts/backfill-cik.mjs --apply` does the steps below
+> (dry run without `--apply`). The address is read from the environment and never stored in the repo.
+
 # ops/07: backfill `institutions.cik`
 
 One-off, by hand, service role / SQL editor. Not a migration, not automated.
